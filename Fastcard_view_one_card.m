@@ -12,7 +12,7 @@ test = dlmread([filepath, filename]);
 % section with 'Run and Advance' button;
 
 % change paramters below accordingly before continuing
-plotInd = [8];    % channels to plot; if channel 1 is encoder, [2 3 4] will display data without encoder
+plotInd = [1:4];    % channels to plot; if channel 1 is encoder, [2 3 4] will display data without encoder
 legendNames = {'encoder'};    % channels names
 medFilterOn = 1;    % choosing 1 makes median filter on; median filter gets rid of spikes
 
