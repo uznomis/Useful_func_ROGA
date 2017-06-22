@@ -10,9 +10,9 @@ encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, ther
 lenPerSector = 1.5e-6;    % encoder sector length in meters
 
 %% Importing
-filename = cell(length(cardSN));
-filepath = cell(length(cardSN));
-for i = 1:length(length(cardSN))
+filename = cell(1,length(cardSN));
+filepath = cell(1,length(cardSN));
+for i = 1:length(cardSN)
     [filename{i}, filepath{i}] = uigetfile...
         ('C:\Users\User\Documents\Test files results on fast cards\*.*',...
         ['Please select ACQ100', num2str(cardSN(i))]);
@@ -20,7 +20,7 @@ for i = 1:length(length(cardSN))
         return
     end
 end
-test = cell(length(cardSN));
+test = cell(1,length(cardSN));
 for i = 1:length(cardSN)
     test{i} = dlmread([filepath{i}, filename{i}]);
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
@@ -58,7 +58,7 @@ if ~isempty(filename)
     data1 = test{1};
     encoderjumpavg = zeros(1,length(test) - 1);
     if encoderAvailable == 1
-        encoderCh1 = encoderChannel(1);
+        encoderCh1 = encoderChannels(1);
         for j = 2:length(data1)
             if (data1(j-1,encoderCh1) - encoderShift)*...
                     (data1(j,encoderCh1) - encoderShift) < 0
@@ -98,25 +98,25 @@ end
 
 % parameters to change before executing the following code
 cardToShow = [1,2];    % cards to display
-% chSN = [14:17;14:17];
+chSN = [1:17;1:17];
 % chSN = [16,15,12,9,6,3;16,15,12,9,6,3]; % first gage (shear)
-chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % third gage (shear)
+% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [1,1];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0.2;    % offset between cards when plotting
+cardOffset = 0.5;    % offset between cards when plotting
 chOffset = 0.03;    % offset between channels within each card when plotting
-cardAmp = [1,10];
-encoderVelDis = 1;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
+cardAmp = [10,1];
+encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 1e3;    % slope of counter for scaling when plotting
 vSlope = 1e3;    % slope of velocity for scaling when plotting
-encoderSlope = [0.01,0.01];
+encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
-accelAmp = 1;
+accelAmp = 10;
 
 % execution begins here
 figureTitle = '';
@@ -145,11 +145,11 @@ for j = 1:length(cardToShow)
             tempCh = tempCh * accelAmp;
         else
             tempCh = tempCh * cardAmp(j);
-            tempCh = smooth(tempCh, smoothSpan(j)) - mean(tempCh);
+            tempCh = smooth(tempCh, smoothSpan(j));
         end
         
         % plot
-        plot(timecell{tempInd},j*cardOffset + i*chOffset + tempCh);
+        plot(timecell{tempInd},j*cardOffset + i*chOffset + tempCh - mean(tempCh));
     end
 end
 
@@ -181,3 +181,5 @@ if encoderVelDis == 2
 end
 
 hold off;
+
+%% Pick up points
