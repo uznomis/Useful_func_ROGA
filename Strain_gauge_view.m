@@ -74,7 +74,7 @@ if ~isempty(filename)
         s1 = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
         
         for i=2:length(test)
-            s2 = test{i}(encoderjump: encoderjump + encoderXcorrWindow,encoderChannel(i));
+            s2 = test{i}(encoderjump: encoderjump + encoderXcorrWindow,encoderChannels(i));
             [r,lag] = xcorr(s1,s2);
             [~,I] = max(abs(r));
             encoderjumpavg(i-1) = round(-lag(I));
@@ -99,7 +99,7 @@ end
 % parameters to change before executing the following code
 cardToShow = [1,2];    % cards to display
 % chSN = [14:17;14:17];
-% chSN = [16,15,12,9,6,3;16,15,12,9,6,3]; % first gage (shear) 
+% chSN = [16,15,12,9,6,3;16,15,12,9,6,3]; % first gage (shear)
 chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
@@ -129,35 +129,29 @@ hold on;
 for j = 1:length(cardToShow)
     tempInd = find(cardSN == cardToShow(j),1);
     for i = 1:length(chSN(j,:))
+        % first do median filter
         if medFilterOn(cardToShow(j))
             tempCh = medfilt2(test{tempInd}(:,chSN(j,i)),[3,1]);
         else
             tempCh = test{tempInd}(:,chSN(j,i));
-            
         end
+        
         tempCh(1) = tempCh(2); % for getting rid of the anomaly first point
         
-        if j == 1 && i ~= encoderChannels(1)
-            tempCh = tempCh*ACQ1001Amp;
-        end
-        
-        if j == 2 && chSN(j,i) == accelCh
-            tempCh = tempCh*accelAmp;
-        end
-              
-        if ismember(chSN(j,i),encoderChannels) || (j == 2 && chSN(j,i) == accelCh)
-            plot(timecell{tempInd},j*...
-                cardOffset + i*chOffset + encoderSlope*(tempCh - mean(tempCh)));
-        
+        % apply amplification to individual channel
+        if chSN(j,i) == encoderChannels(tempInd)
+            tempCh = encoderSlope(j)*tempCh;
+        elseif cardToShow(j) == accelCard && chSN(j,i) == accelCh
+            tempCh = tempCh * accelAmp;
         else
-            plot(timecell{tempInd},j*...
-                cardOffset + i*chOffset + smooth(tempCh,smoothSpan) - mean(tempCh));
+            tempCh = tempCh * cardAmp(j);
+            tempCh = smooth(tempCh, smoothSpan(j)) - mean(tempCh);
         end
+        
+        % plot
+        plot(timecell{tempInd},j*cardOffset + i*chOffset + tempCh);
     end
 end
-
-% plot(timecell{encoderInd},s*sSlope);
-% plot(timecell{encoderInd},v*vSlope);
 
 strings = cell(length(cardToShow)*length(chSN) + encoderVelDis,1);
 
@@ -168,14 +162,22 @@ for j = 1:length(cardToShow)
     end
 end
 
-% strings{end-2} = [['smooth = ';
-strings{end-1} = 'counter';
-strings{end} = 'velocity';
+if encoderVelDis == 1
+    plot(timecell{encoderInd},v*vSlope);
+    strings{end} = 'velocity';
+elseif encoderVelDis == 2
+    plot(timecell{encoderInd},v*vSlope);
+    plot(timecell{encoderInd},s*sSlope);
+    strings{end} = 'counter';
+    strings{end-1} = 'velocity';
+end
 
 legend (strings);
 
 xlabel ('Time in seconds');
-ylabel (['Velocity * ',num2str(1/vSlope,'%.1e'),...
-    ' m/s',newline,'Distance * ',num2str(1/sSlope,'%.1e'),' m']);
+if encoderVelDis == 2
+    ylabel (['Velocity * ',num2str(1/vSlope,'%.1e'),...
+        ' m/s',newline,'Distance * ',num2str(1/sSlope,'%.1e'),' m']);
+end
 
 hold off;
