@@ -1,9 +1,9 @@
-% this program loads data produced my ROGA Terminal developed by James
+% this program loads data produced by ROGA Terminal developed by James
 % Jeffers, display the data according to the user request
 %% Initializing
 % paramters to change before continuing
 cardSN = [1, 2];    % which cards to import; numbers should match file names
-freq = 1e6;    % freqeuncy in Hz
+freq = 5e5;    % freqeuncy in Hz
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation
 encoderChannels = [16;17];
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
@@ -40,11 +40,10 @@ end
 encoderAvailable = 1;
 encoderChannel = encoderChannels(1);
 encoderChannel2 = encoderChannels(2);
-freq = 1e6;
 % parameters regarding synchronization; no need to change
 encoderShift = 3;
-encoderSpacingThrsh = 5e3;
-encoderXcorrWindow = 1e6;
+encoderSpacingThrsh = 5e2;
+encoderXcorrWindow = 1e5;
 
 % execution begins here
 if ~isempty(filename)
@@ -97,18 +96,25 @@ end
 % Advance' button;
 
 % parameters to change before executing the following code
-cardToShow = [1;2];    % cards to display
-chSN = [1:17;1:17];    % channels to display on each card
+cardToShow = [1,2];    % cards to display
+% chSN = [14:17;14:17];
+% chSN = [16,15,12,9,6,3;16,15,12,9,6,3]; % first gage (shear) 
+chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % third gage (shear)
+% chSN = [16;16];    % channels to display on each card
+% chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
+% chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
+% chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = 1;    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
-cardOffset = 0.8;    % offset between cards when plotting
-chOffset = 0.05;    % offset between channels within each card when plotting
+cardOffset = 0.2;    % offset between cards when plotting
+chOffset = 0.03;    % offset between channels within each card when plotting
 sSlope = 1e3;    % slope of counter for scaling when plotting
 vSlope = 1e3;    % slope of velocity for scaling when plotting
 encoderSlope = 0.01;
-ACQ1002Amp = 10;
+ACQ1001Amp = 10;
 accelCh = 16;
+accelAmp = 1;
 encoderVelDis = 2;    % a constant; don't change
-medFilterOn = 0;    % choosing 1 makes median filter on; median filter gets rid of spikes
+medFilterOn = 1;    % choosing 1 makes median filter on; median filter gets rid of spikes
 
 % execution begins here
 figure('Name',[filename{1},' ',filename{2}]);
@@ -121,14 +127,22 @@ for j = 1:length(cardToShow)
             tempCh = medfilt2(test{tempInd}(:,chSN(j,i)),[3,1]);
         else
             tempCh = test{tempInd}(:,chSN(j,i));
+            
         end
         tempCh(1) = tempCh(2); % for getting rid of the anomaly first point
+        
         if j == 1 && i ~= encoderChannels(1)
-            tempCh = tempCh*10;
+            tempCh = tempCh*ACQ1001Amp;
         end
+        
+        if j == 2 && chSN(j,i) == accelCh
+            tempCh = tempCh*accelAmp;
+        end
+              
         if ismember(chSN(j,i),encoderChannels) || (j == 2 && chSN(j,i) == accelCh)
             plot(timecell{tempInd},j*...
                 cardOffset + i*chOffset + encoderSlope*(tempCh - mean(tempCh)));
+        
         else
             plot(timecell{tempInd},j*...
                 cardOffset + i*chOffset + smooth(tempCh,smoothSpan) - mean(tempCh));
@@ -136,17 +150,19 @@ for j = 1:length(cardToShow)
     end
 end
 
-plot(timecell{encoderInd},s*sSlope);
-plot(timecell{encoderInd},v*vSlope);
+% plot(timecell{encoderInd},s*sSlope);
+% plot(timecell{encoderInd},v*vSlope);
 
 strings = cell(length(cardToShow)*length(chSN) + encoderVelDis,1);
 
 for j = 1:length(cardToShow)
     for i = 1:length(chSN)
         strings{(j - 1)*length(chSN) + i} ...
-            = sprintf(['Card ',num2str(cardToShow(j)),' Ch ',num2str(chSN(j,i))]);
+            = sprintf(['DTAQC ',num2str(cardToShow(j)),' Ch ',num2str(chSN(j,i))]);
     end
 end
+
+% strings{end-2} = [['smooth = ';
 strings{end-1} = 'counter';
 strings{end} = 'velocity';
 
