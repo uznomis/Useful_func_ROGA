@@ -183,3 +183,27 @@ end
 hold off;
 
 %% Pick up points
+% go to the figure that you want to pick on, pick, and hit Ctrl + Enter.
+
+% initialize
+startNewPickSet = 0;
+
+% gather picks
+if ~exist('picks','var') || startNewPickSet
+    picks = [];
+end
+try
+    dcm_obj = datacursormode(gcf);
+    c_info = getCursorInfo(dcm_obj);
+    pick = zeros(length(c_info), 2);
+    for i = 1:length(c_info)
+        pick(i,:) = c_info(i).Position;
+    end
+    pick = flipud(pick);
+catch ME
+    error('Please repick.');
+end
+picks = [picks; pick];
+disp(picks);
+
+%% Export to file
