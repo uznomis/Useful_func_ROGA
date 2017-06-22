@@ -3,6 +3,10 @@
 %% Initializing
 % paramters to change before continuing
 cardSN = [1,2];    % which cards to import
+chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
+    'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
+    'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
+    'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 5e5;    % freqeuncy in Hz
 cardToGetEncoder = 0;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
@@ -156,9 +160,11 @@ end
 strings = cell(length(cardToShow)*length(chSN) + encoderVelDis,1);
 
 for j = 1:length(cardToShow)
+    tempInd = find(cardSN == cardToShow(j),1);
     for i = 1:length(chSN)
         strings{(j - 1)*length(chSN) + i} ...
-            = sprintf(['DTAQC ',num2str(cardToShow(j)),' Ch ',num2str(chSN(j,i))]);
+            = sprintf([num2str(cardToShow(j)),' Ch ',num2str(chSN(j,i)),...
+            ' ',chNames{tempInd,chSN(j,i)}]);
     end
 end
 
@@ -181,5 +187,58 @@ if encoderVelDis == 2
 end
 
 hold off;
-
+return
 %% Pick up points
+% go to the figure that you want to pick on, pick, and hit Ctrl + Enter.
+
+% Review the parameters below before running this section.
+startNewPickSet = 0;    % 1 for starting a new set of points; 0 for appending to the current one
+
+% gather picks
+if ~exist('picks','var') || startNewPickSet
+    picks = [];
+end
+try
+    dcm_obj = datacursormode(gcf);
+    c_info = getCursorInfo(dcm_obj);
+    pick = zeros(length(c_info), 2);
+    for i = 1:length(c_info)
+        pick(i,:) = c_info(i).Position;
+    end
+    pick = flipud(pick);
+catch ME
+    error('Please repick.');
+end
+picks = [picks; pick];
+
+% display picks
+disp(picks);
+
+%% Export to file
+% export the processed data to a text format
+
+% saving gauge data set to excel file
+xRange = xlim;
+dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
+[~,name,~] = fileparts(filename{1});
+for i = 1:length(filename)
+    odata = [timecell{i} test{i}];
+    leftInd = find(odata(:,1) > xRange(1),1,'first');
+    rightInd = find(odata(:,1) < xRange(2),1,'last');
+    if rightInd - leftInd > 65536
+        msgbox(['too much data to save: ',...
+            num2str(rightInd - leftInd),' lines']);
+        return
+    end
+    headers = [{'Time'},chNames(i,:)];
+    xlswrite([filepath{1},name,' ',dt,'.xlsx'], headers, filename{i}, 'A1');
+    xlswrite([filepath{1},name,' ',dt,'.xlsx'], odata(leftInd:rightInd,:), filename{i}, 'A2');
+end
+
+% save encoder velocity and distance
+odata = [timecell{encoderInd} v' s'];
+headers = {'Time','Velocity','Distance'};
+leftInd = find(odata(:,1) > xRange(1),1,'first');
+rightInd = find(odata(:,1) < xRange(2),1,'last');
+xlswrite([filepath{1},name,' ',dt,'.xlsx'], headers, 'Sheet1','A1');
+xlswrite([filepath{1},name,' ',dt,'.xlsx'], odata(leftInd:rightInd,:), 'Sheet1','A2');
