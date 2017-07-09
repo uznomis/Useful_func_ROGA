@@ -124,6 +124,7 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 5;
+getReadyForCurveAligning = 1;
 
 % execution begins here
 figureTitle = '';
@@ -133,6 +134,9 @@ end
 figure('Name',figureTitle);
 hold on;
 
+if getReadyForCurveAligning
+    tempPlotData = zeros(length(test{1}),length(cardToShow)*length(chSN)*2);
+end
 for j = 1:length(cardToShow)
     tempInd = find(cardSN == cardToShow(j),1);
     for i = 1:length(chSN(j,:))
@@ -155,8 +159,15 @@ for j = 1:length(cardToShow)
             tempCh = smooth(tempCh, smoothSpan(j));
         end
         
-        % plot
+        % plot        
         plot(timecell{tempInd},j*cardOffset + i*chOffset + tempCh - mean(tempCh));
+        
+        % prepare for curve aligning picking
+        if getReadyForCurveAligning
+            tempPlotData(:,(j-1)*length(chSN)*2+(i-1)*2+1) = timecell{tempInd};
+            tempPlotData(:,(j-1)*length(chSN)*2+(i-1)*2+2) = ...
+                j*cardOffset + i*chOffset + tempCh - mean(tempCh);
+        end
     end
 end
 
