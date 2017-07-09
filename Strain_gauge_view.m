@@ -109,7 +109,8 @@ cardToShow = [1,2];    % cards to display%
 % chSN = [15,12,9,6,3,16;15,12,9,6,3,16]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
-chSN = [14,11,8,5,2,16;14,11,8,5,2,16];    % normal load channels to display on each card
+% chSN = [14,11,8,5,2,16;14,11,8,5,2,16];    % normal load channels to display on each card
+chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [10,3];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
@@ -124,7 +125,7 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 5;
-getReadyForCurveAligning = 1;
+scalePeaks = 0;
 
 % execution begins here
 figureTitle = '';
@@ -134,9 +135,7 @@ end
 figure('Name',figureTitle);
 hold on;
 
-if getReadyForCurveAligning
-    tempPlotData = zeros(length(test{1}),length(cardToShow)*length(chSN)*2);
-end
+lineHandles = cell(length(cardToShow),length(chSN));
 for j = 1:length(cardToShow)
     tempInd = find(cardSN == cardToShow(j),1);
     for i = 1:length(chSN(j,:))
@@ -159,14 +158,23 @@ for j = 1:length(cardToShow)
             tempCh = smooth(tempCh, smoothSpan(j));
         end
         
-        % plot        
-        plot(timecell{tempInd},j*cardOffset + i*chOffset + tempCh - mean(tempCh));
-        
-        % prepare for curve aligning picking
-        if getReadyForCurveAligning
-            tempPlotData(:,(j-1)*length(chSN)*2+(i-1)*2+1) = timecell{tempInd};
-            tempPlotData(:,(j-1)*length(chSN)*2+(i-1)*2+2) = ...
-                j*cardOffset + i*chOffset + tempCh - mean(tempCh);
+        % plot
+        if exist('manualOffsetIndices','var') && ...
+                isequal(size(manualOffsetIndices),size(lineHandles))
+            if length(manualOffsetIndices{j,i}) ~= 2
+                lineHandles{j,i} = plot(timecell{tempInd},...
+                    j*cardOffset + i*chOffset + tempCh - mean(tempCh));
+            else
+                xOffset = timecell{tempInd}(manualOffsetIndices{j,i}(2));
+                yOffset = tempCh(manualOffsetIndices{j,i}(1));
+                scaleValue = tempCh(manualOffsetIndices{j,i}(2)) - ...
+                    tempCh(manualOffsetIndices{j,i}(1));
+                lineHandles{j,i} = plot(timecell{tempInd} - xOffset,...
+                    (tempCh - yOffset)/(scaleValue^scalePeaks));
+            end
+        else
+            lineHandles{j,i} = plot(timecell{tempInd},...
+                j*cardOffset + i*chOffset + tempCh - mean(tempCh));
         end
     end
 end
@@ -257,3 +265,31 @@ rightInd = find(odata(:,1) < xRange(2),1,'last');
 xlswrite([filepath{1},name,' ',dt,'.xlsx'], headers, 'Sheet1','A1');
 xlswrite([filepath{1},name,' ',dt,'.xlsx'], odata(leftInd:rightInd,:), 'Sheet1','A2');
 msgbox('finished.');
+
+%% Initialize picking for curve aligning
+manualOffsetIndices = cell(size(lineHandles,1), size(lineHandles,2));
+
+%% Picking for curve aligning
+try
+    dcm_obj = datacursormode(gcf);
+    c_info = getCursorInfo(dcm_obj);   
+    if mod(length(c_info),2) ~= 0
+        error('Repick!');
+    end
+    c_info = fliplr(c_info);
+    for i = 1:length(c_info)
+        for ii = 1:size(lineHandles,1)
+            for jj = 1:size(lineHandles,2)
+                if isequal(c_info(i).Target, lineHandles{ii,jj})
+                    xValue = c_info(i).Position(1);
+                    manualOffsetIndices{ii,jj}(2-mod(i,2)) = ...
+                        find(lineHandles{ii,jj}.XData >= xValue, 1);
+                end
+            end
+        end
+    end
+catch ME
+    error('Please repick.');
+end
+
+msgbox('Please re-plot now.');
