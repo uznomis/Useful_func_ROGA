@@ -101,30 +101,30 @@ end
 % plot different versions of data plots catered to your needs.
 
 % parameters to change before executing the following code
-cardToShow = [1,2];    % cards to display% 
+cardToShow = [1,2];    % cards to display
 % chSN = [16,16];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:17;1:17];
-% chSN = [3,2,1,16;3,2,1,16];
-% chSN = [15,12,9,6,3,16;15,12,9,6,3,16]; % first gage (shear)
+chSN = [3,6,9;3,6,9];
+% chSN = [15,12,9,6,3,16;16,15,12,9,6,3]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
-% chSN = [14,11,8,5,2,16;14,11,8,5,2,16];    % normal load channels to display on each card
-chSN = [8,5,2;8,5,2];
+% chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
+% chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [10,3];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0.1;    % offset between cards when plotting
+cardOffset = 0.08;    % offset between cards when plotting
 chOffset = 0.005;    % offset between channels within each card when plotting
-cardAmp = [4,1];
+cardAmp = [1,1];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
-sSlope = 3e2;    % slope of counter for scaling when plotting
-vSlope = 3e2;    % slope of velocity for scaling when plotting
+sSlope = 2e2;    % slope of counter for scaling when plotting
+vSlope = 2e2;    % slope of velocity for scaling when plotting
 encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
-accelAmp = 5;
+accelAmp = 3;
 scalePeaks = 0;
 
 % execution begins here
@@ -170,7 +170,7 @@ for j = 1:length(cardToShow)
                 scaleValue = tempCh(manualOffsetIndices{j,i}(2)) - ...
                     tempCh(manualOffsetIndices{j,i}(1));
                 lineHandles{j,i} = plot(timecell{tempInd} - xOffset,...
-                    (tempCh - yOffset)/(scaleValue^scalePeaks));
+                    (tempCh - yOffset)/abs(scaleValue^scalePeaks));
             end
         else
             lineHandles{j,i} = plot(timecell{tempInd},...
@@ -210,16 +210,12 @@ end
 
 hold off;
 return
+
+%% Start new pick set
+picks = [];
+
 %% Pick up points
 % go to the figure that you want to pick on, pick, and hit Ctrl + Enter.
-
-% Review the parameters below before running this section.
-startNewPickSet = 1;    % 1 for starting a new set of points; 0 for appending to the current one
-
-% gather picks
-if ~exist('picks','var') || startNewPickSet
-    picks = [];
-end
 try
     dcm_obj = datacursormode(gcf);
     c_info = getCursorInfo(dcm_obj);
