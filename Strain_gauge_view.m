@@ -126,7 +126,7 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 3;
-plotWithPeaksAligned = 0;
+plotWithPeaksAligned = 1;
 scalePeaks = 0;
 baseVoltageSpan = 100;
 
@@ -336,7 +336,7 @@ end
 deltaTimes = averageArrivalTimes - circshift(averageArrivalTimes,[0 -1]);
 velocityField = gaugeDistance./deltaTimes;
 
-msgbox('Done.');
+msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),'. Remember this.']);
 
 %% Export as strain vs distance
 % IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
@@ -349,6 +349,9 @@ smoothSpan = 10;
 xRange = xlim;
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
+if isequal(exportOrPlot,'plot')
+    figure('Name',['strain_',name]);
+end
 for i = 1:length(filename)
     odata = test{i}(:,1:15);
     leftInd = find(timecell{i} > xRange(1),1,'first');
@@ -360,16 +363,28 @@ for i = 1:length(filename)
     end
     tempInd = find(cardToShow == cardSN(i),1);
     % calculate distances
+    arrivalTime = zeros(1,15);
+    for j = 1:15
+        if ~isempty(arrivalTimes{tempInd,j})
+            arrivalTime(j) = arrivalTimes{tempInd,j};
+        end
+    end
     velocities = reshape([velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i)], 1, 15);
     distanceData = (timecell{i}(leftInd:rightInd,:)*ones(1,15)).*...
         (ones(rightInd-leftInd+1,1)*velocities);    
-    distanceAtPeaks = velocities.*cell2mat(arrivalTimes(tempInd,:));
+    distanceAtPeaks = velocities.*arrivalTime;
     distanceData = distanceData - ones(rightInd-leftInd+1,1)*distanceAtPeaks;
     % calculate strains
+    baseVoltage = zeros(1,15);
+    for j = 1:15
+        if ~isempty(baseVoltages{tempInd,j})
+            baseVoltage(j) = baseVoltages{tempInd,j};
+        end
+    end
     strainData123 = (odata(leftInd:rightInd,:)./...
-        (ones(1-leftInd+rightInd,1)*cell2mat(baseVoltages(tempInd,:)))-1)./GF;
+        (ones(1-leftInd+rightInd,1)*baseVoltage)-1)./GF;
     strainDataXYZ = reshape(strainData123,5*(rightInd-leftInd+1),3);
     strainDataXYZ(:,1) = strainDataXYZ(:,3) - strainDataXYZ(:,1);
     strainDataXYZ(:,3) = strainDataXYZ(:,2) - strainDataXYZ(:,1);
@@ -393,13 +408,11 @@ for i = 1:length(filename)
             headers, [filename{i}(1:10),num2str(i)], 'A1');
         xlswrite([filepath{1},'strain_',name,' ',dt,'.xlsx'],...
             toOutput, [filename{i}(1:10),num2str(i)], 'A2');
+    elseif isequal(exportOrPlot,'plot')
+        hold on
+        for i = 1:15
+            plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan));
+        end
+        hold off
     end
-end
-if isequal(exportOrPlot,'plot')
-    figure('Name',['strain_',name]);
-    hold on
-    for i = 1:15
-        plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan));
-    end
-    hold off
 end
