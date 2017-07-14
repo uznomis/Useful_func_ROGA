@@ -18,7 +18,7 @@ filename = cell(1,length(cardSN));
 filepath = cell(1,length(cardSN));
 for i = 1:length(cardSN)
     [filename{i}, filepath{i}] = uigetfile...
-        ('C:\Users\User\Documents\Test files results on fast cards\*.*',...
+        ('C:\Users\uznom\Documents\MATLAB\*.*',...
         ['Please select ACQ100', num2str(cardSN(i))]);
     if filename{i} == 0
         return
@@ -105,7 +105,8 @@ cardToShow = [1,2];    % cards to display
 % chSN = [16,16];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:17;1:17];
-chSN = [3,6,9;3,6,9];
+chSN = [1:15;1:15];    % for velocity field picking
+% chSN = [3,6,9;3,6,9];
 % chSN = [15,12,9,6,3,16;16,15,12,9,6,3]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
@@ -115,8 +116,8 @@ chSN = [3,6,9;3,6,9];
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0.08;    % offset between cards when plotting
-chOffset = 0.005;    % offset between channels within each card when plotting
+cardOffset = 0.2;    % offset between cards when plotting
+chOffset = 0.01;    % offset between channels within each card when plotting
 cardAmp = [1,1];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
@@ -125,7 +126,9 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 3;
+plotWithPeaksAligned = 0;
 scalePeaks = 0;
+baseVoltageSpan = 100;
 
 % execution begins here
 figureTitle = '';
@@ -136,6 +139,7 @@ figure('Name',figureTitle);
 hold on;
 
 lineHandles = cell(length(cardToShow),length(chSN));
+
 for j = 1:length(cardToShow)
     tempInd = find(cardSN == cardToShow(j),1);
     for i = 1:length(chSN(j,:))
@@ -160,7 +164,8 @@ for j = 1:length(cardToShow)
         
         % plot
         if exist('manualOffsetIndices','var') && ...
-                isequal(size(manualOffsetIndices),size(lineHandles))
+                isequal(size(manualOffsetIndices),size(lineHandles)) && ...
+                plotWithPeaksAligned
             if length(manualOffsetIndices{j,i}) ~= 2
                 lineHandles{j,i} = plot(timecell{tempInd},...
                     j*cardOffset + i*chOffset + tempCh - mean(tempCh));
@@ -171,6 +176,12 @@ for j = 1:length(cardToShow)
                     tempCh(manualOffsetIndices{j,i}(1));
                 lineHandles{j,i} = plot(timecell{tempInd} - xOffset,...
                     (tempCh - yOffset)/abs(scaleValue^scalePeaks));
+                % register arrival times and base voltages
+                arrivalTimes{j,i} = xOffset;
+                baseVoltages{j,i} = mean(test{tempInd}(...
+                    manualOffsetIndices{j,i}(1)-baseVoltageSpan/2:...
+                    manualOffsetIndices{j,i}(1)+baseVoltageSpan/2,...
+                    chSN(j,i)));                
             end
         else
             lineHandles{j,i} = plot(timecell{tempInd},...
@@ -234,6 +245,8 @@ disp(picks);
 
 %% Export to file
 % export the processed data to a text format
+% IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
+% before comming to here.
 
 % saving gauge data set to excel file
 xRange = xlim;
@@ -264,8 +277,12 @@ msgbox('finished.');
 
 %% Initialize picking for curve aligning
 manualOffsetIndices = cell(size(lineHandles,1), size(lineHandles,2));
+arrivalTimes = cell(size(lineHandles,1), size(lineHandles,2));
+baseVoltages = cell(size(lineHandles,1), size(lineHandles,2));
 
 %% Picking for curve aligning
+% IMPORTANT: make plotWithPeaksAligned = 1 in Plotting section and PLOT
+% before comming to here.
 try
     dcm_obj = datacursormode(gcf);
     c_info = getCursorInfo(dcm_obj);   
@@ -289,3 +306,100 @@ catch ME
 end
 
 msgbox('Please re-plot now.');
+
+%% Calculate velocity field
+gaugeDistance = 0.025;    % in meters
+
+averageArrivalTimes = zeros(1,10);
+cnt = 0;
+for i = 1:size(arrivalTimes,1)
+    for j = 1:size(arrivalTimes,2)/3
+        gaugeCnt = 0;
+        gaugeSum = 0;
+        for k = 1:3
+            if isempty(arrivalTimes{i,j+k-1})
+                continue
+            else
+                gaugeSum = gaugeSum + arrivalTimes{i,j+k-1};
+                gaugeCnt = gaugeCnt + 1;
+            end
+        end
+        cnt = cnt + 1;
+        if gaugeCnt > 0
+            averageArrivalTimes(cnt) = gaugeSum/gaugeCnt;
+        else
+            error('You did not pick all required points.');
+        end
+    end
+end
+
+deltaTimes = averageArrivalTimes - circshift(averageArrivalTimes,[0 -1]);
+velocityField = gaugeDistance./deltaTimes;
+
+msgbox('Done.');
+
+%% Export as strain vs distance
+% IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
+% before comming to here.
+
+GF = 100;
+exportOrPlot = 'plot';
+smoothSpan = 10;
+
+xRange = xlim;
+dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
+[~,name,~] = fileparts(filename{1});
+for i = 1:length(filename)
+    odata = test{i}(:,1:15);
+    leftInd = find(timecell{i} > xRange(1),1,'first');
+    rightInd = find(timecell{i} < xRange(2),1,'last');
+    if rightInd - leftInd > 500000
+        msgbox(['too much data to save: ',...
+            num2str(rightInd - leftInd),' lines']);
+        return
+    end
+    tempInd = find(cardToShow == cardSN(i),1);
+    % calculate distances
+    velocities = reshape([velocityField(5*(i-1)+1:5*i);
+        velocityField(5*(i-1)+1:5*i);
+        velocityField(5*(i-1)+1:5*i)], 1, 15);
+    distanceData = (timecell{i}(leftInd:rightInd,:)*ones(1,15)).*...
+        (ones(rightInd-leftInd+1,1)*velocities);    
+    distanceAtPeaks = velocities.*cell2mat(arrivalTimes(tempInd,:));
+    distanceData = distanceData - ones(rightInd-leftInd+1,1)*distanceAtPeaks;
+    % calculate strains
+    strainData123 = (odata(leftInd:rightInd,:)./...
+        (ones(1-leftInd+rightInd,1)*cell2mat(baseVoltages(tempInd,:)))-1)./GF;
+    strainDataXYZ = reshape(strainData123,5*(rightInd-leftInd+1),3);
+    strainDataXYZ(:,1) = strainDataXYZ(:,3) - strainDataXYZ(:,1);
+    strainDataXYZ(:,3) = strainDataXYZ(:,2) - strainDataXYZ(:,1);
+    strainDataXYZ = reshape(strainDataXYZ, rightInd-leftInd+1, 15);
+    % arrange output data format
+    toOutput = [];
+    headers = {};
+    for j = 1:5
+        for k = 1:3
+            toOutput = [toOutput distanceData(:,(j-1)*3+k)];
+            headers = [headers {['d',chNames{i,(j-1)*3+k}]}];
+            toOutput = [toOutput strainData123(:,(j-1)*3+k)];
+            headers = [headers {[chNames{i,(j-1)*3+k}]}];
+        end
+        toOutput = [toOutput strainDataXYZ(:,(j-1)*3+1:(j-1)*3+3)];
+        headers = [headers {'XY','YY','XX'}];
+    end
+    if isequal(exportOrPlot,'export')
+        % output
+        xlswrite([filepath{1},'strain_',name,' ',dt,'.xlsx'],...
+            headers, [filename{i}(1:10),num2str(i)], 'A1');
+        xlswrite([filepath{1},'strain_',name,' ',dt,'.xlsx'],...
+            toOutput, [filename{i}(1:10),num2str(i)], 'A2');
+    end
+end
+if isequal(exportOrPlot,'plot')
+    figure('Name',['strain_',name]);
+    hold on
+    for i = 1:15
+        plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan));
+    end
+    hold off
+end
