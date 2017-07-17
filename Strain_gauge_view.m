@@ -7,18 +7,19 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
-freq = 5e5;    % freqeuncy in Hz
+freq = 1e6;    % freqeuncy in Hz
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
+baseLevelOffsets = [2.034,2.034];
 
 %% Importing
 filename = cell(1,length(cardSN));
 filepath = cell(1,length(cardSN));
 for i = 1:length(cardSN)
     [filename{i}, filepath{i}] = uigetfile...
-        ('C:\Users\uznom\Documents\MATLAB\*.*',...
+        ('C:\Users\User\Desktop\ROGA Terminal\data\*.*',...
         ['Please select ACQ100', num2str(cardSN(i))]);
     if filename{i} == 0
         return
@@ -28,6 +29,8 @@ test = cell(1,length(cardSN));
 for i = 1:length(cardSN)
     test{i} = dlmread([filepath{i}, filename{i}]);
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
+    test{i} = test{i} + baseLevelOffsets(i);
+    test{i}(:,16:17) = test{i}(:,16:17) -  baseLevelOffsets(i);
 end
 
 %% Velocity and counter calculation
@@ -48,7 +51,7 @@ end
 % then increase encoderSpacingThrsh and decrease otherwise, and if there is
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
-encoderShift = 3;    % encoder is usually 0/4.6 volts, so pick in between
+encoderShift = .1;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 5e2;
 encoderXcorrWindow = 5e5;
 
@@ -102,23 +105,23 @@ end
 
 % parameters to change before executing the following code
 cardToShow = [1,2];    % cards to display
-% chSN = [16,16];
+% chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:17;1:17];
-chSN = [1:15;1:15];    % for velocity field picking
+% chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [3,6,9;3,6,9];
-% chSN = [15,12,9,6,3,16;16,15,12,9,6,3]; % first gage (shear)
+chSN = [15,14,13;15,14,13]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
-% chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
+% chSN = [14,11,8,5,2;14,11,8,5,2];    % normal load channels to display on each card
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
 cardOffset = 0.2;    % offset between cards when plotting
-chOffset = 0.01;    % offset between channels within each card when plotting
-cardAmp = [1,1];
+chOffset = 0.05;    % offset between channels within each card when plotting
+cardAmp = [10,10];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
 vSlope = 2e2;    % slope of velocity for scaling when plotting
@@ -126,7 +129,7 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 3;
-plotWithPeaksAligned = 1;
+plotWithPeaksAligned = 0;
 scalePeaks = 0;
 baseVoltageSpan = 100;
 
@@ -308,7 +311,7 @@ end
 msgbox('Please re-plot now.');
 
 %% Calculate velocity field
-gaugeDistance = 0.025;    % in meters
+gaugeDistance = 0.0314;    % in meters
 
 averageArrivalTimes = zeros(1,10);
 cnt = 0;
@@ -342,7 +345,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),'. Remember this
 % IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
 % before comming to here.
 
-GF = 100;
+GF = 155;
 exportOrPlot = 'plot';
 smoothSpan = 10;
 
@@ -415,4 +418,14 @@ for i = 1:length(filename)
         end
         hold off
     end
+end
+
+%% Truncate original data and save to file
+preCut = 1;
+postCut = 1;
+
+% execution begins here
+for i = 1:length(cardSN)
+    tempData  = test{i};
+    dlmwrite('test2',tempData);
 end
