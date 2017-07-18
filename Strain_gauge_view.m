@@ -7,7 +7,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
-freq = 1e6;    % freqeuncy in Hz
+freq = 5e5;    % freqeuncy in Hz
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
@@ -51,7 +51,7 @@ end
 % then increase encoderSpacingThrsh and decrease otherwise, and if there is
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
-encoderShift = .1;    % encoder is usually 0/4.6 volts, so pick in between
+encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 5e2;
 encoderXcorrWindow = 5e5;
 
@@ -108,9 +108,9 @@ cardToShow = [1,2];    % cards to display
 % chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:17;1:17];
-% chSN = [1:15;1:15];    % for velocity field picking
+ chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [3,6,9;3,6,9];
-chSN = [15,14,13;15,14,13]; % first gage (shear)
+% chSN = [15,14,13;15,14,13]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [14,11,8,5,2;14,11,8,5,2];    % normal load channels to display on each card
@@ -119,8 +119,8 @@ chSN = [15,14,13;15,14,13]; % first gage (shear)
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0.2;    % offset between cards when plotting
-chOffset = 0.05;    % offset between channels within each card when plotting
+cardOffset = 5;    % offset between cards when plotting
+chOffset = 0.075;    % offset between channels within each card when plotting
 cardAmp = [10,10];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
@@ -184,7 +184,8 @@ for j = 1:length(cardToShow)
                 baseVoltages{j,i} = mean(test{tempInd}(...
                     manualOffsetIndices{j,i}(1)-baseVoltageSpan/2:...
                     manualOffsetIndices{j,i}(1)+baseVoltageSpan/2,...
-                    chSN(j,i)));                
+                    chSN(j,i)));
+                baseVoltageIndices{j,i} = manualOffsetIndices{j,i}(1);
             end
         else
             lineHandles{j,i} = plot(timecell{tempInd},...
@@ -248,11 +249,10 @@ disp(picks);
 
 %% Export to file
 % export the processed data to a text format
-% IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
-% before comming to here.
 
 % saving gauge data set to excel file
 xRange = xlim;
+xRange = xRange + mean2(cell2mat(arrivalTimes))*plotWithPeaksAligned;
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 for i = 1:length(filename)
@@ -282,10 +282,9 @@ msgbox('finished.');
 manualOffsetIndices = cell(size(lineHandles,1), size(lineHandles,2));
 arrivalTimes = cell(size(lineHandles,1), size(lineHandles,2));
 baseVoltages = cell(size(lineHandles,1), size(lineHandles,2));
+baseVoltageIndices = cell(size(lineHandles,1), size(lineHandles,2));
 
 %% Picking for curve aligning
-% IMPORTANT: make plotWithPeaksAligned = 1 in Plotting section and PLOT
-% before comming to here.
 try
     dcm_obj = datacursormode(gcf);
     c_info = getCursorInfo(dcm_obj);   
@@ -308,30 +307,41 @@ catch ME
     error('Please repick.');
 end
 
-msgbox('Please re-plot now.');
+msgbox(['Please re-plot now. FYI, peak was at ',...
+    num2str(mean2(cell2mat(arrivalTimes))),'.']);
 
-%% Calculate velocity field
+%% Export picks of peaks
+dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
+[~,name,~] = fileparts(filename{1});
+save([filepath{1},'picks_',name,' ',dt,'.mat'],'manualOffsetIndices');
+msgbox('finished.');
+
+%% Calculate arrival times, velocity field
 gaugeDistance = 0.0314;    % in meters
 
 averageArrivalTimes = zeros(1,10);
+averageBaseVoltageIndices = zeros(1,10);
 cnt = 0;
 for i = 1:size(arrivalTimes,1)
     for j = 1:size(arrivalTimes,2)/3
         gaugeCnt = 0;
         gaugeSum = 0;
+        gaugeIndSum = 0;
         for k = 1:3
             if isempty(arrivalTimes{i,j+k-1})
                 continue
             else
                 gaugeSum = gaugeSum + arrivalTimes{i,j+k-1};
+                gaugeIndSum = gaugeIndSum + baseVoltageIndices{i,j+k-1};
                 gaugeCnt = gaugeCnt + 1;
             end
         end
         cnt = cnt + 1;
         if gaugeCnt > 0
             averageArrivalTimes(cnt) = gaugeSum/gaugeCnt;
+            averageBaseVoltageIndices(cnt) = round(gaugeIndSum/gaugeCnt);
         else
-            error('You did not pick all required points.');
+            error('You did not pick at least one channel per gauge.');
         end
     end
 end
@@ -339,17 +349,24 @@ end
 deltaTimes = averageArrivalTimes - circshift(averageArrivalTimes,[0 -1]);
 velocityField = gaugeDistance./deltaTimes;
 
-msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),'. Remember this.']);
+display(averageArrivalTimes);
+display(velocityField);
+
+msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
+    '. averageArrivalTimes contains times of peaks. velocityField ',...
+    'contains tentatively calculated velocities. See Command Window.']);
 
 %% Export as strain vs distance
-% IMPORTANT: make plotWithPeaksAligned = 0 in Plotting section and PLOT
-% before comming to here.
 
 GF = 155;
-exportOrPlot = 'plot';
+exportOrPlot = 'export';
 smoothSpan = 10;
+useAverageOfPicks = 1;
+velocityField = ones(1,10);   % for plotting vs time
+% velocityField = [];    % custom velocities
 
 xRange = xlim;
+xRange = xRange + mean2(cell2mat(arrivalTimes))*plotWithPeaksAligned;
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 if isequal(exportOrPlot,'plot')
@@ -366,23 +383,34 @@ for i = 1:length(filename)
     end
     tempInd = find(cardToShow == cardSN(i),1);
     % calculate distances
-    arrivalTime = zeros(1,15);
-    for j = 1:15
-        if ~isempty(arrivalTimes{tempInd,j})
-            arrivalTime(j) = arrivalTimes{tempInd,j};
+    if useAverageOfPicks
+        tempV = averageArrivalTimes(5*(i-1)+1:5*i);
+        arrivalTime = reshape([tempV;tempV;tempV],1,15);
+    else
+        arrivalTime = zeros(1,15);
+        for j = 1:15
+            if ~isempty(arrivalTimes{tempInd,j})
+                arrivalTime(j) = arrivalTimes{tempInd,j};
+            end
         end
     end
     velocities = reshape([velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i)], 1, 15);
     distanceData = (timecell{i}(leftInd:rightInd,:)*ones(1,15)).*...
-        (ones(rightInd-leftInd+1,1)*velocities);    
+        (ones(rightInd-leftInd+1,1)*velocities);
     distanceAtPeaks = velocities.*arrivalTime;
     distanceData = distanceData - ones(rightInd-leftInd+1,1)*distanceAtPeaks;
     % calculate strains
+    if useAverageOfPicks
+        tempI = averageBaseVoltageIndices(5*(i-1)+1:5*i);
+        baseVoltageInd = reshape([tempI;tempI;tempI],1,15);
+    end
     baseVoltage = zeros(1,15);
     for j = 1:15
-        if ~isempty(baseVoltages{tempInd,j})
+        if useAverageOfPicks
+            baseVoltage(j) = test{i}(baseVoltageInd(j),j);
+        elseif ~isempty(baseVoltages{tempInd,j})
             baseVoltage(j) = baseVoltages{tempInd,j};
         end
     end
@@ -419,13 +447,20 @@ for i = 1:length(filename)
         hold off
     end
 end
+if isequal(exportOrPlot,'export')
+    msgbox('finished.');
+end
 
 %% Truncate original data and save to file
-preCut = 1;
-postCut = 1;
+preCut = 1;    % in seconds
+postCut = 1;    % in seconds
 
 % execution begins here
+dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 for i = 1:length(cardSN)
-    tempData  = test{i};
-    dlmwrite('test2',tempData);
+    tempData  = test{i}(freq*preCut:end-freq*postCut,:);
+    tempData = reshape(tempData,1,length(tempData)*17);
+    [~,name,~] = fileparts(filename{i});
+    dlmwrite([filepath{i},'chopped_',name,' ',dt,'.txt'],tempData);
 end
+msgbox('finished.');
