@@ -12,7 +12,10 @@ cardToGetEncoder = 1;    % the number of card whose encoder data is used for vel
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
+baseLevelFactors = [1,1];
 baseLevelOffsets = [2.034,2.034];
+defaultBaseVoltages = ones(2,15);
+% defaultBaseVoltages = [;];    % custom V0
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -26,10 +29,12 @@ for i = 1:length(cardSN)
     end
 end
 test = cell(1,length(cardSN));
+raw_test = test;
 for i = 1:length(cardSN)
     test{i} = dlmread([filepath{i}, filename{i}]);
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
-    test{i} = test{i} + baseLevelOffsets(i);
+    raw_test{i} = test{i};
+    test{i} = test{i} * baseLevelFactors(i) + baseLevelOffsets(i);
     test{i}(:,16:17) = test{i}(:,16:17) -  baseLevelOffsets(i);
 end
 
@@ -129,7 +134,7 @@ encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
 accelAmp = 3;
-plotWithPeaksAligned = 0;
+plotWithPeaksAligned = 1;
 scalePeaks = 0;
 baseVoltageSpan = 100;
 
@@ -245,6 +250,7 @@ end
 picks = [picks; pick];
 
 % display picks
+format long
 disp(picks);
 
 %% Export to file
@@ -252,7 +258,10 @@ disp(picks);
 
 % saving gauge data set to excel file
 xRange = xlim;
-xRange = xRange + mean2(cell2mat(arrivalTimes))*plotWithPeaksAligned;
+avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
+if ~isnan(avg0)
+    xRange = xRange + avg0*plotWithPeaksAligned;
+end
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 for i = 1:length(filename)
@@ -349,8 +358,11 @@ end
 deltaTimes = averageArrivalTimes - circshift(averageArrivalTimes,[0 -1]);
 velocityField = gaugeDistance./deltaTimes;
 
-display(averageArrivalTimes);
-display(velocityField);
+format longE
+disp('averageArrivalTimes');
+display(averageArrivalTimes');
+disp('velocityField');
+display(velocityField');
 
 msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
     '. averageArrivalTimes contains times of peaks. velocityField ',...
@@ -362,11 +374,15 @@ GF = 155;
 exportOrPlot = 'export';
 smoothSpan = 10;
 useAverageOfPicks = 1;
+usePickedBaseVoltages = 1;
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [];    % custom velocities
 
 xRange = xlim;
-xRange = xRange + mean2(cell2mat(arrivalTimes))*plotWithPeaksAligned;
+avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
+if ~isnan(avg0)
+    xRange = xRange + avg0*plotWithPeaksAligned;
+end
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 if isequal(exportOrPlot,'plot')
@@ -406,27 +422,37 @@ for i = 1:length(filename)
         tempI = averageBaseVoltageIndices(5*(i-1)+1:5*i);
         baseVoltageInd = reshape([tempI;tempI;tempI],1,15);
     end
-    baseVoltage = zeros(1,15);
-    for j = 1:15
-        if useAverageOfPicks
-            baseVoltage(j) = test{i}(baseVoltageInd(j),j);
-        elseif ~isempty(baseVoltages{tempInd,j})
-            baseVoltage(j) = baseVoltages{tempInd,j};
+    if usePickedBaseVoltages
+        baseVoltage = zeros(1,15);
+        for j = 1:15
+            if useAverageOfPicks
+                baseVoltage(j) = test{i}(baseVoltageInd(j),j);
+            elseif ~isempty(baseVoltages{tempInd,j})
+                baseVoltage(j) = baseVoltages{tempInd,j};
+            end
         end
+    else 
+        baseVoltage = defaultBaseVoltages(i,:);
     end
     strainData123 = (odata(leftInd:rightInd,:)./...
         (ones(1-leftInd+rightInd,1)*baseVoltage)-1)./GF;
     strainDataXYZ = reshape(strainData123,5*(rightInd-leftInd+1),3);
-    strainDataXYZ(:,1) = strainDataXYZ(:,3) - strainDataXYZ(:,1);
-    strainDataXYZ(:,3) = strainDataXYZ(:,2) - strainDataXYZ(:,1);
+    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
+    strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
     strainDataXYZ = reshape(strainDataXYZ, rightInd-leftInd+1, 15);
     % arrange output data format
     toOutput = [];
     headers = {};
     for j = 1:5
+        if useAverageOfPicks
+            toOutput = [toOutput distanceData(:,(j-1)*3+1)];
+            headers = [headers {['d',chNames{i,(j-1)*3+1}]}];
+        end
         for k = 1:3
-            toOutput = [toOutput distanceData(:,(j-1)*3+k)];
-            headers = [headers {['d',chNames{i,(j-1)*3+k}]}];
+            if ~useAverageOfPicks
+                toOutput = [toOutput distanceData(:,(j-1)*3+k)];
+                headers = [headers {['d',chNames{i,(j-1)*3+k}]}];
+            end
             toOutput = [toOutput strainData123(:,(j-1)*3+k)];
             headers = [headers {[chNames{i,(j-1)*3+k}]}];
         end
@@ -458,7 +484,7 @@ postCut = 1;    % in seconds
 % execution begins here
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 for i = 1:length(cardSN)
-    tempData  = test{i}(freq*preCut:end-freq*postCut,:);
+    tempData  = raw_test{i}(freq*preCut:end-freq*postCut,:);
     tempData = reshape(tempData,1,length(tempData)*17);
     [~,name,~] = fileparts(filename{i});
     dlmwrite([filepath{i},'chopped_',name,' ',dt,'.txt'],tempData);
