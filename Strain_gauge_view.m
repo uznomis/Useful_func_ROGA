@@ -7,15 +7,16 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
-freq = 5e5;    % freqeuncy in Hz
+freq = 1e6;    % freqeuncy in Hz
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
-baseLevelFactors = [1,1];
-baseLevelOffsets = [2.034,2.034];
-defaultBaseVoltages = ones(2,15);
-% defaultBaseVoltages = [;];    % custom V0
+baseLevelFactors = [20.58,11];
+baseLevelOffsets = [3.464,2.036];
+% defaultBaseVoltages = ones(2,15);
+defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
+    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % in mV
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -34,8 +35,7 @@ for i = 1:length(cardSN)
     test{i} = dlmread([filepath{i}, filename{i}]);
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
     raw_test{i} = test{i};
-    test{i} = test{i} * baseLevelFactors(i) + baseLevelOffsets(i);
-    test{i}(:,16:17) = test{i}(:,16:17) -  baseLevelOffsets(i);
+    test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+baseLevelOffsets(i)) / baseLevelFactors(i);
 end
 
 %% Velocity and counter calculation
@@ -122,11 +122,11 @@ cardToShow = [1,2];    % cards to display
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [1,1];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 5;    % offset between cards when plotting
-chOffset = 0.075;    % offset between channels within each card when plotting
-cardAmp = [10,10];
+cardOffset = 10;    % offset between cards when plotting
+chOffset = .3;    % offset between channels within each card when plotting
+cardAmp = [3,3];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
 vSlope = 2e2;    % slope of velocity for scaling when plotting
@@ -337,11 +337,11 @@ for i = 1:size(arrivalTimes,1)
         gaugeSum = 0;
         gaugeIndSum = 0;
         for k = 1:3
-            if isempty(arrivalTimes{i,j+k-1})
+            if isempty(arrivalTimes{i,(j-1)*3+k})
                 continue
             else
-                gaugeSum = gaugeSum + arrivalTimes{i,j+k-1};
-                gaugeIndSum = gaugeIndSum + baseVoltageIndices{i,j+k-1};
+                gaugeSum = gaugeSum + arrivalTimes{i,(j-1)*3+k};
+                gaugeIndSum = gaugeIndSum + baseVoltageIndices{i,(j-1)*3+k};
                 gaugeCnt = gaugeCnt + 1;
             end
         end
@@ -371,10 +371,10 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 %% Export as strain vs distance
 
 GF = 155;
-exportOrPlot = 'export';
+exportOrPlot = 'plot';
 smoothSpan = 10;
 useAverageOfPicks = 1;
-usePickedBaseVoltages = 1;
+usePickedBaseVoltages = 0;
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [];    % custom velocities
 
