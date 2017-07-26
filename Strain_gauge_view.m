@@ -112,28 +112,28 @@ end
 cardToShow = [1,2];    % cards to display
 % chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
-% chSN = [1:17;1:17];
- chSN = [1:15;1:15];    % for velocity field picking
+chSN = [1:15;1:15];
+% chSN = [1:16:3;1:16:3];    % for velocity field picking
 % chSN = [3,6,9;3,6,9];
-% chSN = [15,14,13;15,14,13]; % first gage (shear)
+% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [14,11,8,5,2;14,11,8,5,2];    % normal load channels to display on each card
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [1,1];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 10;    % offset between cards when plotting
-chOffset = .3;    % offset between channels within each card when plotting
-cardAmp = [3,3];
+cardOffset = 20;    % offset between cards when plotting
+chOffset = 2;    % offset between channels within each card when plotting
+cardAmp = [10,10];
 encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
 vSlope = 2e2;    % slope of velocity for scaling when plotting
 encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
-accelAmp = 3;
+accelAmp = 50;
 plotWithPeaksAligned = 1;
 scalePeaks = 0;
 baseVoltageSpan = 100;
@@ -371,12 +371,13 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 %% Export as strain vs distance
 
 GF = 155;
-exportOrPlot = 'plot';
-smoothSpan = 10;
-useAverageOfPicks = 1;
+exportOrPlot = 'export';
+smoothSpan = 5;
+useAverageOfPicks = 1; % use 1 if only one pick per gage 
 usePickedBaseVoltages = 0;
 velocityField = ones(1,10);   % for plotting vs time
-% velocityField = [];    % custom velocities
+% velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
+% velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
 
 xRange = xlim;
 avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
@@ -436,7 +437,10 @@ for i = 1:length(filename)
     end
     strainData123 = (odata(leftInd:rightInd,:)./...
         (ones(1-leftInd+rightInd,1)*baseVoltage)-1)./GF;
-    strainDataXYZ = reshape(strainData123,5*(rightInd-leftInd+1),3);
+    strainDataXYZ = [];
+    for j = 1:5
+        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)];
+    end    
     strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
     strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
     strainDataXYZ = reshape(strainDataXYZ, rightInd-leftInd+1, 15);
