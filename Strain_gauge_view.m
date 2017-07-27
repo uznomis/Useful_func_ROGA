@@ -371,7 +371,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 %% Export as strain vs distance
 
 GF = 155;
-exportOrPlot = 'export';
+exportOrPlot = 'plot';
 smoothSpan = 5;
 useAverageOfPicks = 1; % use 1 if only one pick per gage 
 usePickedBaseVoltages = 0;
@@ -439,11 +439,16 @@ for i = 1:length(filename)
         (ones(1-leftInd+rightInd,1)*baseVoltage)-1)./GF;
     strainDataXYZ = [];
     for j = 1:5
-        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)];
+        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)]; % TO CHECK
     end    
-    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
+    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1)); % TO CHECK
     strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
-    strainDataXYZ = reshape(strainDataXYZ, rightInd-leftInd+1, 15);
+    stranDataXYZ_ = strainDataXYZ;
+    strainDataXYZ = [];
+    for j = 1:5
+        strainDataXYZ = [strainDataXYZ...
+            stranDataXYZ_((rightInd - leftInd +1)*(j-1)+1:(rightInd - leftInd +1)*j,:)];
+    end
     % arrange output data format
     toOutput = [];
     headers = {};
@@ -460,7 +465,7 @@ for i = 1:length(filename)
             toOutput = [toOutput strainData123(:,(j-1)*3+k)];
             headers = [headers {[chNames{i,(j-1)*3+k}]}];
         end
-        toOutput = [toOutput strainDataXYZ(:,(j-1)*3+1:(j-1)*3+3)];
+        toOutput = [toOutput strainDataXYZ(:,(j-1)*3+1:(j-1)*3+3)]; % probably wrong
         headers = [headers {'XY','YY','XX'}];
     end
     if isequal(exportOrPlot,'export')
@@ -472,7 +477,7 @@ for i = 1:length(filename)
     elseif isequal(exportOrPlot,'plot')
         hold on
         for i = 1:15
-            plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan));
+            plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan)); % PLOT THE XY YY ANA XX
         end
         hold off
     end
