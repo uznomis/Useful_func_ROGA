@@ -7,7 +7,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
-freq = 1e6;    % freqeuncy in Hz
+freq = 5e5;    % freqeuncy in Hz
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
@@ -112,8 +112,8 @@ end
 cardToShow = [1,2];    % cards to display
 % chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
-chSN = [1:15;1:15];
-% chSN = [1:16:3;1:16:3];    % for velocity field picking
+chSN = [1:15;1:15];    % for velocity field picking
+% chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
 % chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
@@ -258,9 +258,11 @@ disp(picks);
 
 % saving gauge data set to excel file
 xRange = xlim;
-avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
-if ~isnan(avg0)
-    xRange = xRange + avg0*plotWithPeaksAligned;
+if exist('arrivalTimes','var')
+    avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
+    if ~isnan(avg0)
+        xRange = xRange + avg0*plotWithPeaksAligned;
+    end
 end
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
@@ -316,8 +318,8 @@ catch ME
     error('Please repick.');
 end
 
-msgbox(['Please re-plot now. FYI, peak was at ',...
-    num2str(mean2(cell2mat(arrivalTimes))),'.']);
+msgbox(['Please re-plot now. FYI, last peak you picked was at ',...
+    num2str(xValue),'.']);
 
 %% Export picks of peaks
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
