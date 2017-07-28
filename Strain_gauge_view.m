@@ -229,7 +229,9 @@ if encoderVelDis == 2
 end
 
 hold off;
-return
+if 1
+    return
+end
 
 %% Start new pick set
 picks = [];
@@ -313,13 +315,12 @@ try
                 end
             end
         end
-    end
+    end    
+    msgbox(['Please re-plot now. FYI, last peak you picked was at ',...
+        num2str(xValue),' s.']);
 catch ME
     error('Please repick.');
 end
-
-msgbox(['Please re-plot now. FYI, last peak you picked was at ',...
-    num2str(xValue),'.']);
 
 %% Export picks of peaks
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
@@ -370,21 +371,31 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
     '. averageArrivalTimes contains times of peaks. velocityField ',...
     'contains tentatively calculated velocities. See Command Window.']);
 
-%% Export as strain vs distance
+%% Export/plot as strain vs distance/time
 
 GF = 155;
 exportOrPlot = 'plot';
 smoothSpan = 5;
-useAverageOfPicks = 1; % use 1 if only one pick per gage 
-usePickedBaseVoltages = 0;
+picksAvailable = 0;
+useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
+usePickedBaseVoltages = 0;    % if picksAvailable = 0, then this has no effect
+detrendLines123 = 1;
+detrendLinesXYZ = 1;
+% outputFormat = '123';
+outputFormat = '123';
+cardOffset = 1e-3;
+chOffset = 1e-4;
+color = {'r','k','b'};
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
 
 xRange = xlim;
-avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
-if ~isnan(avg0)
-    xRange = xRange + avg0*plotWithPeaksAligned;
+if exist('arrivalTimes','var')
+    avg0 = mean(cell2mat(reshape(arrivalTimes,1,numel(arrivalTimes))));
+    if ~isnan(avg0)
+        xRange = xRange + avg0*plotWithPeaksAligned;
+    end
 end
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
@@ -402,14 +413,16 @@ for i = 1:length(filename)
     end
     tempInd = find(cardToShow == cardSN(i),1);
     % calculate distances
-    if useAverageOfPicks
-        tempV = averageArrivalTimes(5*(i-1)+1:5*i);
-        arrivalTime = reshape([tempV;tempV;tempV],1,15);
-    else
-        arrivalTime = zeros(1,15);
-        for j = 1:15
-            if ~isempty(arrivalTimes{tempInd,j})
-                arrivalTime(j) = arrivalTimes{tempInd,j};
+    arrivalTime = zeros(1,15);
+    if picksAvailable
+        if useAverageOfPicks
+            tempV = averageArrivalTimes(5*(i-1)+1:5*i);
+            arrivalTime = reshape([tempV;tempV;tempV],1,15);
+        else            
+            for j = 1:15
+                if ~isempty(arrivalTimes{tempInd,j})
+                    arrivalTime(j) = arrivalTimes{tempInd,j};
+                end
             end
         end
     end
@@ -421,71 +434,98 @@ for i = 1:length(filename)
     distanceAtPeaks = velocities.*arrivalTime;
     distanceData = distanceData - ones(rightInd-leftInd+1,1)*distanceAtPeaks;
     % calculate strains
-    if useAverageOfPicks
-        tempI = averageBaseVoltageIndices(5*(i-1)+1:5*i);
-        baseVoltageInd = reshape([tempI;tempI;tempI],1,15);
-    end
-    if usePickedBaseVoltages
+    if picksAvailable && usePickedBaseVoltages
         baseVoltage = zeros(1,15);
+        if useAverageOfPicks
+            tempI = averageBaseVoltageIndices(5*(i-1)+1:5*i);
+            baseVoltageInd = reshape([tempI;tempI;tempI],1,15);
+        end        
         for j = 1:15
             if useAverageOfPicks
-                baseVoltage(j) = test{i}(baseVoltageInd(j),j);
+                baseVoltage(j) = odata(baseVoltageInd(j),j);
             elseif ~isempty(baseVoltages{tempInd,j})
                 baseVoltage(j) = baseVoltages{tempInd,j};
             end
         end
-    else 
-        baseVoltage = defaultBaseVoltages(i,:);
+    else
+         baseVoltage = odata(leftInd,:);
     end
     strainData123 = (odata(leftInd:rightInd,:)./...
-        (ones(1-leftInd+rightInd,1)*baseVoltage)-1)./GF;
+        (ones(1-leftInd+rightInd,1)*defaultBaseVoltages(i,:))-1)./GF;
+    strainData123 = strainData123 - detrendLines123*...
+        ones(1-leftInd+rightInd,1)*strainData123(1,:);
     strainDataXYZ = [];
     for j = 1:5
-        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)]; % TO CHECK
+        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)];
     end    
-    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1)); % TO CHECK
+    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
     strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
-    stranDataXYZ_ = strainDataXYZ;
+    strainDataXYZ_ = strainDataXYZ;
     strainDataXYZ = [];
     for j = 1:5
         strainDataXYZ = [strainDataXYZ...
-            stranDataXYZ_((rightInd - leftInd +1)*(j-1)+1:(rightInd - leftInd +1)*j,:)];
+            strainDataXYZ_((rightInd - leftInd +1)*(j-1)+1:(rightInd - leftInd +1)*j,:)];
     end
+    strainDataXYZ = strainDataXYZ - detrendLinesXYZ*...
+        ones(1-leftInd+rightInd,1)*strainDataXYZ(1,:);
     % arrange output data format
+    if isequal(outputFormat,'123')
+        strainData = strainData123;
+    else
+        strainData = strainDataXYZ;
+    end
     toOutput = [];
     headers = {};
     for j = 1:5
-        if useAverageOfPicks
+        if useAverageOfPicks || ~picksAvailable || isequal(outputFormat,'XYZ')
             toOutput = [toOutput distanceData(:,(j-1)*3+1)];
-            headers = [headers {['d',chNames{i,(j-1)*3+1}]}];
+            chName = chNames{i,(j-1)*3+1};
+            headers = [headers {['d',chName(1)]}];
         end
         for k = 1:3
-            if ~useAverageOfPicks
+            if ~useAverageOfPicks && picksAvailable && isequal(outputFormat,'123')
                 toOutput = [toOutput distanceData(:,(j-1)*3+k)];
                 headers = [headers {['d',chNames{i,(j-1)*3+k}]}];
             end
-            toOutput = [toOutput strainData123(:,(j-1)*3+k)];
-            headers = [headers {[chNames{i,(j-1)*3+k}]}];
+            toOutput = [toOutput strainData(:,(j-1)*3+k)];
+            if isequal(outputFormat,'123')
+                headers = [headers {[chNames{i,(j-1)*3+k}]}];
+            end
         end
-        toOutput = [toOutput strainDataXYZ(:,(j-1)*3+1:(j-1)*3+3)]; % probably wrong
-        headers = [headers {'XY','YY','XX'}];
+        if isequal(outputFormat,'XYZ')
+            headers = [headers {[chName,'XY'],[chName,'YY'],[chName,'XX']}];
+        end
     end
     if isequal(exportOrPlot,'export')
         % output
-        xlswrite([filepath{1},'strain_',name,' ',dt,'.xlsx'],...
+        xlswrite([filepath{1},'strain_',outputFormat,'_',name,' ',dt,'.xlsx'],...
             headers, [filename{i}(1:10),num2str(i)], 'A1');
-        xlswrite([filepath{1},'strain_',name,' ',dt,'.xlsx'],...
+        xlswrite([filepath{1},'strain_',outputFormat,'_',name,' ',dt,'.xlsx'],...
             toOutput, [filename{i}(1:10),num2str(i)], 'A2');
     elseif isequal(exportOrPlot,'plot')
         hold on
-        for i = 1:15
-            plot(distanceData(:,i), smooth(strainData123(:,i),smoothSpan)); % PLOT THE XY YY ANA XX
+        for j = 1:15
+            plot(distanceData(:,j), i*cardOffset+j*chOffset+...
+                smooth(strainData(:,j),smoothSpan),color{mod(j-1,3)+1});
         end
         hold off
     end
 end
 if isequal(exportOrPlot,'export')
     msgbox('finished.');
+else
+    if isequal(outputFormat,'123')
+        legend([chNames(1,1:15) chNames(2,1:15)]);
+    else
+        chNamesXYZ = {};
+        chTable = {'XY','YY','XX'};
+        for i = 1:30
+            chName = chNames{i};
+            chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
+        end
+        chNamesXYZ = reshape(chNamesXYZ, 2, 15);
+        legend([chNamesXYZ(1,:) chNamesXYZ(2,:)]);
+    end
 end
 
 %% Truncate original data and save to file
