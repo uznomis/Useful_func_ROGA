@@ -557,11 +557,12 @@ for i = 1:2
 end
 %% Re-initialize XYZ picks
 XYZPicks = zeros(2,15);
+clear('figPicked');
 
 %% Picking/plotting for XYZ strains
 
 customXYZshifts = zeros(2,15);
-velocityXYZ = ones(2,15);
+velocityXYZ = ones(1,10);
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -598,10 +599,12 @@ chNamesXYZ = {};
 chTable = {'XX','YY','XY'};
 hold on
 for i = 1:2
+    leftInd = find(timecell{i} > xRange(1),1,'first');
+    rightInd = find(timecell{i} < xRange(2),1,'last');
     for j = 1:15
         if XYZPicks(i,j) ~= 0
             plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)-customXYZshifts(i,j))...
-                *velocityXYZ(i,j),...
+                *velocityXYZ(mod((i-1)*15+j-1,3)+1),...
                 strainDatas{i}(:,j));            
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
