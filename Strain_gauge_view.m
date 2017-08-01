@@ -391,7 +391,7 @@ color = {'r','k','b'};
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
-XYZPicksReady = 1;
+XYZPicksReady = 0;
 
 xRange = xlim;
 if exist('arrivalTimes','var')
@@ -417,7 +417,6 @@ for i = 1:length(filename)
             num2str(rightInd - leftInd),' lines']);
         return
     end
-    tempInd = find(cardToShow == cardSN(i),1);
     % calculate distances
     arrivalTime = zeros(1,15);
     if picksAvailable
@@ -426,13 +425,16 @@ for i = 1:length(filename)
             arrivalTime = reshape([tempV;tempV;tempV],1,15);
         else            
             for j = 1:15
-                if ~isempty(arrivalTimes{tempInd,j})
-                    arrivalTime(j) = arrivalTimes{tempInd,j};
+                if ~isempty(arrivalTimes{i,j})
+                    arrivalTime(j) = arrivalTimes{i,j};
                 end
             end
         end
     elseif XYZPicksReady && exist('XYZPicks','var')
         arrivalTime = XYZPicks(i,:) - customXYZshifts(i,:);
+    end
+    if XYZPicksReady
+        velocityField = velocityXYZ;
     end
     velocities = reshape([velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i);
@@ -451,8 +453,8 @@ for i = 1:length(filename)
         for j = 1:15
             if useAverageOfPicks
                 baseVoltage(j) = odata(baseVoltageInd(j),j);
-            elseif ~isempty(baseVoltages{tempInd,j})
-                baseVoltage(j) = baseVoltages{tempInd,j};
+            elseif ~isempty(baseVoltages{i,j})
+                baseVoltage(j) = baseVoltages{i,j};
             end
         end
     else
@@ -527,7 +529,7 @@ for i = 1:length(filename)
 end
 if isequal(exportOrPlot,'export')
     msgbox('finished.');
-else
+elseif ~XYZPicksReady
     if isequal(outputFormat,'123')
         legend([chNames(1,1:15) chNames(2,1:15)]);
     else
@@ -557,8 +559,6 @@ end
 XYZPicks = zeros(2,15);
 
 %% Picking/plotting for XYZ strains
-
-% !!!!!!!Remember to get rid of tempInd!!!!!!!
 
 customXYZshifts = zeros(2,15);
 velocityXYZ = ones(2,15);
@@ -617,7 +617,7 @@ postCut = 1;    % in seconds
 % execution begins here
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 for i = 1:length(cardSN)
-    tempData  = raw_test{i}(freq*preCut:end-freq*postCut,:);
+    tempData  = raw_test{i}(freq*preCut+1:end-freq*postCut,:);
     tempData = reshape(tempData,1,length(tempData)*17);
     [~,name,~] = fileparts(filename{i});
     dlmwrite([filepath{i},'chopped_',name,' ',dt,'.txt'],tempData);
