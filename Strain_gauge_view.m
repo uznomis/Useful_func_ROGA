@@ -375,7 +375,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 exportOrPlot = 'plot';
-smoothSpan = 5;    % used only for BOTH 'plot' and 'export'
+smoothSpan = 5;    % used for BOTH 'plot' and 'export'
 % !!below used only for strain123!!
 picksAvailable = 0;
 useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
@@ -569,7 +569,7 @@ clear('fixedZoom');
 %% Picking/plotting for XYZ strains
 
 % customXYZshifts = zeros(1,10);
-customXYZshifts = [0 0 0 0 0 0 0 0 0 .003];
+customXYZshifts = [0 0 0 0 0 0 0 0 0 0];
 velocityXYZ = ones(1,10);
 componentOffset = 2e-4;
 
