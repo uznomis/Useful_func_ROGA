@@ -375,7 +375,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 exportOrPlot = 'plot';
-smoothSpan = 5;    % used only for 'plot' not 'export'
+smoothSpan = 5;    % used only for BOTH 'plot' and 'export'
 % !!below used only for strain123!!
 picksAvailable = 0;
 useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
@@ -391,7 +391,8 @@ color = {'r','k','b'};
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
-XYZPicksReady = 0;
+XYZPicksReady = 1;
+componentToUse = 1; % 1:XY, 2:YY, 3:XX
 
 xRange = xlim;
 if exist('arrivalTimes','var')
@@ -431,9 +432,9 @@ for i = 1:length(filename)
             end
         end
     elseif XYZPicksReady && exist('XYZPicks','var')
-        arrivalTime = XYZPicks(i,:) - customXYZshifts(i,:);
-    end
-    if XYZPicksReady
+        tempV = reshape(XYZPicks(i,:),3,5);
+        tempV = tempV(componentToUse,:) - customXYZshifts((i-1)*5+1:i*5);
+        arrivalTime = reshape([tempV;tempV;tempV],1,15);
         velocityField = velocityXYZ;
     end
     velocities = reshape([velocityField(5*(i-1)+1:5*i);
@@ -484,6 +485,9 @@ for i = 1:length(filename)
     else
         strainData = strainDataXYZ;
     end
+    for j = 1:15
+        strainData(:,j) = smooth(strainData(:,j),smoothSpan);
+    end
     strainDatas{i} = strainData;
     toOutput = [];
     headers = {};
@@ -517,19 +521,14 @@ for i = 1:length(filename)
         hold on
         for j = 1:15
             lineHandlesXYZ{i,j} = plot(distanceData(:,j), i*cardOffset+j*chOffset+...
-                smooth(strainData(:,j),smoothSpan),color{mod(j-1,3)+1});
-            if XYZPicksReady
-                if XYZPicks(i,j) == 0
-                    lineHandlesXYZ{i,j}.set('Visible','off');
-                end
-            end
+                strainData(:,j),color{mod(j-1,3)+1});
         end
         hold off
     end
 end
 if isequal(exportOrPlot,'export')
     msgbox('finished.');
-elseif ~XYZPicksReady
+else
     if isequal(outputFormat,'123')
         legend([chNames(1,1:15) chNames(2,1:15)]);
     else
@@ -545,7 +544,7 @@ elseif ~XYZPicksReady
 end
 
 %% Hide lines for XYZ
-hideLines = [1 0 0];    % XY, YY, XX respectively
+hideLines = [0 0 0];    % XY, YY, XX respectively
 for i = 1:2
     for j = 1:15
         if hideLines(mod(j-1,3)+1) == 1
@@ -559,10 +558,20 @@ end
 XYZPicks = zeros(2,15);
 clear('figPicked');
 
+%% Fix zoom
+fixedZoom = {xlim,ylim};
+
+%% Auto zoom
+xlim auto
+ylim auto
+clear('fixedZoom');
+
 %% Picking/plotting for XYZ strains
 
-customXYZshifts = zeros(2,15);
+% customXYZshifts = zeros(1,10);
+customXYZshifts = [0 0 0 0 0 0 0 0 0 .003];
 velocityXYZ = ones(1,10);
+componentOffset = 2e-4;
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -603,9 +612,10 @@ for i = 1:2
     rightInd = find(timecell{i} < xRange(2),1,'last');
     for j = 1:15
         if XYZPicks(i,j) ~= 0
-            plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)-customXYZshifts(i,j))...
-                *velocityXYZ(mod((i-1)*15+j-1,3)+1),...
-                strainDatas{i}(:,j));            
+            plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
+                -customXYZshifts(ceil(((i-1)*15+j)/3)))...
+                *velocityXYZ(ceil(((i-1)*15+j)/3)),...
+                strainDatas{i}(:,j)+ mod(j-1,3)*componentOffset);            
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
@@ -613,6 +623,10 @@ for i = 1:2
 end
 legend(chNamesXYZ);
 hold off
+if exist('fixedZoom','var')
+    xlim(fixedZoom{1});
+    ylim(fixedZoom{2});
+end
 %% Truncate original data and save to file
 preCut = 1;    % in seconds
 postCut = 1;    % in seconds
