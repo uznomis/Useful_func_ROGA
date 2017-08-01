@@ -375,20 +375,23 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 exportOrPlot = 'plot';
-smoothSpan = 5;
+smoothSpan = 5;    % used only for 'plot' not 'export'
+% !!below used only for strain123!!
 picksAvailable = 0;
 useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
 usePickedBaseVoltages = 0;    % if picksAvailable = 0, then this has no effect
+% !!above used only for strain123!!
 detrendLines123 = 1;
 detrendLinesXYZ = 1;
 % outputFormat = '123';
-outputFormat = '123';
+outputFormat = 'XYZ';
 cardOffset = 1e-3;
 chOffset = 1e-4;
 color = {'r','k','b'};
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
+XYZPicksReady = 0;
 
 xRange = xlim;
 if exist('arrivalTimes','var')
@@ -398,6 +401,9 @@ if exist('arrivalTimes','var')
     end
 end
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
+if ~exist('lineHandlesXYZ','var')
+    lineHandlesXYZ = cell(2,15);
+end
 [~,name,~] = fileparts(filename{1});
 if isequal(exportOrPlot,'plot')
     figure('Name',['strain_',name]);
@@ -411,7 +417,6 @@ for i = 1:length(filename)
             num2str(rightInd - leftInd),' lines']);
         return
     end
-    tempInd = find(cardToShow == cardSN(i),1);
     % calculate distances
     arrivalTime = zeros(1,15);
     if picksAvailable
@@ -420,11 +425,16 @@ for i = 1:length(filename)
             arrivalTime = reshape([tempV;tempV;tempV],1,15);
         else            
             for j = 1:15
-                if ~isempty(arrivalTimes{tempInd,j})
-                    arrivalTime(j) = arrivalTimes{tempInd,j};
+                if ~isempty(arrivalTimes{i,j})
+                    arrivalTime(j) = arrivalTimes{i,j};
                 end
             end
         end
+    elseif XYZPicksReady && exist('XYZPicks','var')
+        arrivalTime = XYZPicks(i,:) - customXYZshifts(i,:);
+    end
+    if XYZPicksReady
+        velocityField = velocityXYZ;
     end
     velocities = reshape([velocityField(5*(i-1)+1:5*i);
         velocityField(5*(i-1)+1:5*i);
@@ -443,8 +453,8 @@ for i = 1:length(filename)
         for j = 1:15
             if useAverageOfPicks
                 baseVoltage(j) = odata(baseVoltageInd(j),j);
-            elseif ~isempty(baseVoltages{tempInd,j})
-                baseVoltage(j) = baseVoltages{tempInd,j};
+            elseif ~isempty(baseVoltages{i,j})
+                baseVoltage(j) = baseVoltages{i,j};
             end
         end
     else
@@ -474,6 +484,7 @@ for i = 1:length(filename)
     else
         strainData = strainDataXYZ;
     end
+    strainDatas{i} = strainData;
     toOutput = [];
     headers = {};
     for j = 1:5
@@ -493,7 +504,7 @@ for i = 1:length(filename)
             end
         end
         if isequal(outputFormat,'XYZ')
-            headers = [headers {[chName,'XY'],[chName,'YY'],[chName,'XX']}];
+            headers = [headers {[chName(1),'XY'],[chName(1),'YY'],[chName(1),'XX']}];
         end
     end
     if isequal(exportOrPlot,'export')
@@ -505,20 +516,25 @@ for i = 1:length(filename)
     elseif isequal(exportOrPlot,'plot')
         hold on
         for j = 1:15
-            plot(distanceData(:,j), i*cardOffset+j*chOffset+...
+            lineHandlesXYZ{i,j} = plot(distanceData(:,j), i*cardOffset+j*chOffset+...
                 smooth(strainData(:,j),smoothSpan),color{mod(j-1,3)+1});
+            if XYZPicksReady
+                if XYZPicks(i,j) == 0
+                    lineHandlesXYZ{i,j}.set('Visible','off');
+                end
+            end
         end
         hold off
     end
 end
 if isequal(exportOrPlot,'export')
     msgbox('finished.');
-else
+elseif ~XYZPicksReady
     if isequal(outputFormat,'123')
         legend([chNames(1,1:15) chNames(2,1:15)]);
     else
         chNamesXYZ = {};
-        chTable = {'XY','YY','XX'};
+        chTable = {'XX','YY','XY'};
         for i = 1:30
             chName = chNames{i};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
@@ -528,6 +544,72 @@ else
     end
 end
 
+%% Hide lines for XYZ
+hideLines = [1 0 0];    % XY, YY, XX respectively
+for i = 1:2
+    for j = 1:15
+        if hideLines(mod(j-1,3)+1) == 1
+            lineHandlesXYZ{i,j}.set('Visible','off');
+        else
+            lineHandlesXYZ{i,j}.set('Visible','on');
+        end
+    end
+end
+%% Re-initialize XYZ picks
+XYZPicks = zeros(2,15);
+
+%% Picking/plotting for XYZ strains
+
+customXYZshifts = zeros(2,15);
+velocityXYZ = ones(2,15);
+
+if ~exist('XYZPicks','var')
+    XYZPicks = zeros(2,15);
+end
+if ~exist('lineHandlesXYZ','var')
+    return
+end
+% Getting picks on plot
+try
+    dcm_obj = datacursormode(gcf);
+    c_info = getCursorInfo(dcm_obj);
+    if length(c_info) ~= 0
+        c_info = fliplr(c_info);
+        for i = 1:length(c_info)
+            for ii = 1:size(lineHandlesXYZ,1)
+                for jj = 1:size(lineHandlesXYZ,2)
+                    if isequal(c_info(i).Target, lineHandlesXYZ{ii,jj})
+                        XYZPicks(ii,jj) = c_info(i).Position(1);
+                    end
+                end
+            end
+        end
+    end
+catch ME
+    error('Please repick.');
+end
+if exist('figPicked','var')
+    figure(figPicked);
+else
+    figPicked = figure('Name',['strain_picked_',name]);
+end
+clf(figPicked);
+chNamesXYZ = {};
+chTable = {'XX','YY','XY'};
+hold on
+for i = 1:2
+    for j = 1:15
+        if XYZPicks(i,j) ~= 0
+            plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)-customXYZshifts(i,j))...
+                *velocityXYZ(i,j),...
+                strainDatas{i}(:,j));            
+            chName = chNames{i,j};
+            chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
+        end
+    end
+end
+legend(chNamesXYZ);
+hold off
 %% Truncate original data and save to file
 preCut = 1;    % in seconds
 postCut = 1;    % in seconds
@@ -535,7 +617,7 @@ postCut = 1;    % in seconds
 % execution begins here
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 for i = 1:length(cardSN)
-    tempData  = raw_test{i}(freq*preCut:end-freq*postCut,:);
+    tempData  = raw_test{i}(freq*preCut+1:end-freq*postCut,:);
     tempData = reshape(tempData,1,length(tempData)*17);
     [~,name,~] = fileparts(filename{i});
     dlmwrite([filepath{i},'chopped_',name,' ',dt,'.txt'],tempData);
