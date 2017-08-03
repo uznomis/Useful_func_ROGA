@@ -376,23 +376,26 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 exportOrPlot = 'plot';
 smoothSpan = 5;    % used for BOTH 'plot' and 'export'
-% !!below used only for strain123!!
-picksAvailable = 0;
-useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
-usePickedBaseVoltages = 0;    % if picksAvailable = 0, then this has no effect
-% !!above used only for strain123!!
 detrendLines123 = 1;
 detrendLinesXYZ = 1;
 % outputFormat = '123';
 outputFormat = 'XYZ';
-cardOffset = 1e-3;
-chOffset = 1e-4;
+cardOffset = 1.5e-2;
+chOffset = 1e-3;
+chAmp = 10;
 color = {'r','k','b'};
+XYZPicksReady = 0;
+componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
+
+% usually you don't need to change things below
+% !!below used only for strain123!!
+picksAvailable = 0;    % default 0; make it 1 ONLY when picking actual voltages
+useAverageOfPicks = 1;    % 1 for only 1 channel picked; if picksAvailable = 0, then this has no effect
+usePickedBaseVoltages = 0;    % if picksAvailable = 0, then this has no effect
 velocityField = ones(1,10);   % for plotting vs time
 % velocityField = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityField = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
-XYZPicksReady = 1;
-componentToUse = 1; % 1:XY, 2:YY, 3:XX
+% !!above used only for strain123!!
 
 xRange = xlim;
 if exist('arrivalTimes','var')
@@ -521,7 +524,7 @@ for i = 1:length(filename)
         hold on
         for j = 1:15
             lineHandlesXYZ{i,j} = plot(distanceData(:,j), i*cardOffset+j*chOffset+...
-                strainData(:,j),color{mod(j-1,3)+1});
+                strainData(:,j)*chAmp,color{mod(j-1,3)+1});
         end
         hold off
     end
@@ -544,7 +547,7 @@ else
 end
 
 %% Hide lines for XYZ
-hideLines = [0 0 0];    % XY, YY, XX respectively
+hideLines = [0 1 1];    % XY, YY, XX respectively
 for i = 1:2
     for j = 1:15
         if hideLines(mod(j-1,3)+1) == 1
@@ -569,9 +572,12 @@ clear('fixedZoom');
 %% Picking/plotting for XYZ strains
 
 % customXYZshifts = zeros(1,10);
-customXYZshifts = [0 0 0 0 0 0 0 0 0 0];
-velocityXYZ = ones(1,10);
-componentOffset = 2e-4;
+customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
+velocityXYZ = ones(1,10);    % custom velocity
+% velocityXYZ = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
+% velocityXYZ = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
+componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
+componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -627,6 +633,12 @@ if exist('fixedZoom','var')
     xlim(fixedZoom{1});
     ylim(fixedZoom{2});
 end
+format LongE
+disp("Picks are:");
+tempPicks = [XYZPicks(1,:) XYZPicks(2,:)]';
+tempPicks = reshape(tempPicks,3,10);
+disp(tempPicks(componentToDisplay,:)');
+
 %% Truncate original data and save to file
 preCut = 1;    % in seconds
 postCut = 1;    % in seconds
