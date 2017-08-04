@@ -386,6 +386,7 @@ chAmp = 10;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
+componentToReplaceAsRatio = 1;    % 0:no effect, 1:XY, 2:YY, 3:XX; the specified component will be replaced with XY/YY ratio
 
 % usually you don't need to change things below
 % !!below used only for strain123!!
@@ -474,6 +475,10 @@ for i = 1:length(filename)
     end    
     strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
     strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
+    if componentToReplaceAsRatio ~= 0
+        strainDataXYZ(:,componentToReplaceAsRatio) = ...
+            strainDataXYZ(:,1)./strainDataXYZ(:,2);
+    end
     strainDataXYZ_ = strainDataXYZ;
     strainDataXYZ = [];
     for j = 1:5
