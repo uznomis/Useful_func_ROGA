@@ -8,6 +8,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 5e5;    % freqeuncy in Hz
+downsampleRate = 10;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
@@ -35,8 +36,11 @@ for i = 1:length(cardSN)
     test{i} = dlmread([filepath{i}, filename{i}]);
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
     raw_test{i} = test{i};
+    test{i} = downsample(test{i},downsampleRate);
     test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+baseLevelOffsets(i)) / baseLevelFactors(i);
 end
+raw_freq = freq;
+freq = freq / downsampleRate;
 
 %% Velocity and counter calculation
 % calculate s and v from encoder; calling another function
@@ -58,7 +62,7 @@ end
 % encoderXcorrWindow.
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 5e2;
-encoderXcorrWindow = 5e5;
+encoderXcorrWindow = 5e4;
 
 % execution begins here
 if ~isempty(filename)
@@ -651,7 +655,7 @@ postCut = 1;    % in seconds
 % execution begins here
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 for i = 1:length(cardSN)
-    tempData  = raw_test{i}(freq*preCut+1:end-freq*postCut,:);
+    tempData  = raw_test{i}(raw_freq*preCut+1:end-raw_freq*postCut,:);
     tempData = reshape(tempData,1,length(tempData)*17);
     [~,name,~] = fileparts(filename{i});
     dlmwrite([filepath{i},'chopped_',name,' ',dt,'.txt'],tempData);
