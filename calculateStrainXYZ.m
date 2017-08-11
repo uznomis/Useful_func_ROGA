@@ -10,5 +10,5 @@ output = [XY YY XX];
 function [XX,YY,XY] = transformXYZ(exx,eyy,exy,L)
 e_ = L*[exx exy;exy eyy]*L';
 XX = e_(1,1);
-YY = e_(1,2);
-XY = e_(2,2);
+XY = e_(1,2);
+YY = e_(2,2);

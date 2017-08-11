@@ -380,7 +380,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 %% Export/plot as strain vs distance/time
 
 GF = 155;
-useSimpleXYZConversion = 0;    % make 1 to use correct XYZ calculation
+useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot';
 smoothSpan = 5;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1;
@@ -478,9 +478,13 @@ for i = 1:length(filename)
         ones(1-leftInd+rightInd,1)*strainData123(1,:);
     strainDataXYZ = [];
     for j = 1:5
-        theta = anglesRelativeToFault(i,j);
-        strainDataXYZ = [strainDataXYZ;
-            calculateStrainXYZ(strainData123(:,(j-1)*3+1:j*3),theta)];
+        if useSimpleXYZConversion
+            strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)];
+        else
+            theta = anglesRelativeToFault(i,j);
+            strainDataXYZ = [strainDataXYZ;
+                calculateStrainXYZ(strainData123(:,(j-1)*3+1:j*3),theta)];
+        end
     end
     if useSimpleXYZConversion
         strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
