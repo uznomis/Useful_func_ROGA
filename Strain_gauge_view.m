@@ -8,7 +8,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 5e5;    % freqeuncy in Hz
-downsampleRate = 10;    % remember to also change parameters in Sync cards properly
+downsampleRate = 100;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
@@ -18,6 +18,8 @@ baseLevelOffsets = [3.464,2.036];
 % defaultBaseVoltages = ones(2,15);
 defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
     147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % in mV
+anglesRelativeToFault = [   55.8000   47.9000   43.4000   50.8000   41.6000;
+    54.5000   45.3000   47.2000   46.4000   40.6000];
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -61,8 +63,8 @@ end
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
-encoderSpacingThrsh = 5e2;
-encoderXcorrWindow = 5e4;
+encoderSpacingThrsh = 5e1;
+encoderXcorrWindow = 5e3;
 
 % execution begins here
 if ~isempty(filename)
@@ -378,6 +380,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 %% Export/plot as strain vs distance/time
 
 GF = 155;
+useSimpleXYZConversion = 0;    % make 1 to use correct XYZ calculation
 exportOrPlot = 'plot';
 smoothSpan = 5;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1;
@@ -390,7 +393,7 @@ chAmp = 10;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
-componentToReplaceAsRatio = 1;    % 0:no effect, 1:XY, 2:YY, 3:XX; the specified component will be replaced with XY/YY ratio
+componentToReplaceAsRatio = 0;    % 0:no effect, 1:XY, 2:YY, 3:XX; the specified component will be replaced with XY/YY ratio
 
 % usually you don't need to change things below
 % !!below used only for strain123!!
@@ -475,10 +478,14 @@ for i = 1:length(filename)
         ones(1-leftInd+rightInd,1)*strainData123(1,:);
     strainDataXYZ = [];
     for j = 1:5
-        strainDataXYZ = [strainDataXYZ; strainData123(:,(j-1)*3+1:j*3)];
-    end    
-    strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
-    strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
+        theta = anglesRelativeToFault(i,j);
+        strainDataXYZ = [strainDataXYZ;
+            calculateStrainXYZ(strainData123(:,(j-1)*3+1:j*3),theta)];
+    end
+    if useSimpleXYZConversion
+        strainDataXYZ(:,1) = 0.5*(strainDataXYZ(:,3) - strainDataXYZ(:,1));
+        strainDataXYZ(:,3) = strainDataXYZ(:,2) - 2*strainDataXYZ(:,1);
+    end
     if componentToReplaceAsRatio ~= 0
         strainDataXYZ(:,componentToReplaceAsRatio) = ...
             strainDataXYZ(:,1)./strainDataXYZ(:,2);
