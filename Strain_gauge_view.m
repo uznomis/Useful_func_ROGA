@@ -7,19 +7,27 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
-freq = 5e5;    % freqeuncy in Hz
-downsampleRate = 100;    % remember to also change parameters in Sync cards properly
-cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
+freq = 1e6;    % freqeuncy in Hz
+downsampleRate = 1;    % remember to also change parameters in Sync cards properly
+cardToGetEncoder = 2;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
-baseLevelFactors = [20.58,11];
-baseLevelOffsets = [3.464,2.036];
+baseLevelFactors = [20.58,11]; % for PMMA sample
+baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+baseLevelFactors = [21.06,11]; % for SWG sample
+baseLevelOffsets = [3.623,2.048]; % for SWG sample
+% [22.2 22.1 22.2 21.9 21.8 21.8 21.2 21.9 21.8 21.8 10.3 21.8 21.7 21.7 21.9
+% 11.0 10.8 11.0 11.1 11.1 11.0 11.0 11.1 11.0 11.1 10.4 11.0 11.1 11.1
+% 11.0] % amplification of SWG gages
 % defaultBaseVoltages = ones(2,15);
-defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
-    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % in mV
+% defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
+%    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
+  defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3
+     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
+
 anglesRelativeToFault = [   55.8000   47.9000   43.4000   50.8000   41.6000;
-    54.5000   45.3000   47.2000   46.4000   40.6000];
+    54.5000   45.3000   47.2000   46.4000   40.6000]; % data for PMMA
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -63,8 +71,10 @@ end
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
-encoderSpacingThrsh = 5e1;
-encoderXcorrWindow = 5e3;
+encoderSpacingThrsh = 5e3; % for high frequency run
+encoderXcorrWindow = 3e5; % for high frequency run
+% encoderSpacingThrsh = 5e2; % for diluted runs in which the frequency is reduced
+% encoderXcorrWindow = 5e3; % for diluted runs in which the frequency is reduced
 
 % execution begins here
 if ~isempty(filename)
@@ -118,28 +128,28 @@ end
 cardToShow = [1,2];    % cards to display
 % chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
-chSN = [1:15;1:15];    % for velocity field picking
+% chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
-% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
+chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [14,11,8,5,2;14,11,8,5,2];    % normal load channels to display on each card
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [5,5];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [10,10];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 20;    % offset between cards when plotting
+cardOffset = 10;    % offset between cards when plotting
 chOffset = 2;    % offset between channels within each card when plotting
-cardAmp = [10,10];
-encoderVelDis = 0;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
+cardAmp = [1,1];
+encoderVelDis = 2;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
 vSlope = 2e2;    % slope of velocity for scaling when plotting
 encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
-accelAmp = 50;
+accelAmp = 10;
 plotWithPeaksAligned = 1;
 scalePeaks = 0;
 baseVoltageSpan = 100;
@@ -381,14 +391,18 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
-exportOrPlot = 'plot';
-smoothSpan = 5;    % used for BOTH 'plot' and 'export'
-detrendLines123 = 1;
-detrendLinesXYZ = 1;
+exportOrPlot = 'export'; % enter 'export' for saving data
+smoothSpan = 1;    % used for BOTH 'plot' and 'export'
+ detrendLines123 = 0; % setting for clear plotting 
+ detrendLinesXYZ = 0; % setting for clear plotting
+% detrendLines123 = 0; % setting for true values relative to zero for export 
+%detrendLinesXYZ = 0; % setting for true values relative to zero for export
 % outputFormat = '123';
 outputFormat = 'XYZ';
-cardOffset = 1.5e-2;
-chOffset = 1e-3;
+% cardOffset = 1e-3;
+ chOffset = 3e-4;
+cardOffset = 1e-3;
+chOffset = 0.5e-4;
 chAmp = 10;
 color = {'r','k','b'};
 XYZPicksReady = 0;
@@ -567,7 +581,7 @@ else
 end
 
 %% Hide lines for XYZ
-hideLines = [0 1 1];    % XY, YY, XX respectively
+hideLines = [1 1 0];    % XY, YY, XX respectively
 for i = 1:2
     for j = 1:15
         if hideLines(mod(j-1,3)+1) == 1
@@ -594,10 +608,11 @@ clear('fixedZoom');
 % customXYZshifts = zeros(1,10);
 customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
 velocityXYZ = ones(1,10);    % custom velocity
+% velocityXYZ   I-J,  H-I, G-H, F-G,   E-F,  D-E,  C-D,  B-C,  A-B, J-A
 % velocityXYZ = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
-% velocityXYZ = [200 100 50 100 250 100 500 50 30 100];    % custom velocities
+% velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
-componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
+componentToDisplay = 3;  % 1:XY, 2:YY, 3:XX
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -654,7 +669,7 @@ if exist('fixedZoom','var')
     ylim(fixedZoom{2});
 end
 format LongE
-disp("Picks are:");
+disp('Picks are:');
 tempPicks = [XYZPicks(1,:) XYZPicks(2,:)]';
 tempPicks = reshape(tempPicks,3,10);
 disp(tempPicks(componentToDisplay,:)');
