@@ -2,7 +2,7 @@
 % relatively fast method, please write your own code because this only
 % serves as an algorithm reference
 
-function [counter,v] = getCounterFromEncoder(test,f,lenPerSector)
+function [counter,v] = getCounterFromEncoder(test,f,lenPerSector,intvl)
 count = 0;
 encoderShift = 3;
 temp = zeros(1,length(test));
@@ -18,7 +18,6 @@ counter = temp * lenPerSector;
 
 %%
 % averaging method of calc velocity
-intvl = 1e5;
 tempv = zeros(1,length(test));
 
 denom = intvl/(f*lenPerSector);
