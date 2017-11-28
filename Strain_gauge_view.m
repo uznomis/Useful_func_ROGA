@@ -8,14 +8,14 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 1e6;    % freqeuncy in Hz
-downsampleRate = 100;    % remember to also change parameters in Sync cards properly
+downsampleRate = 1;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 velocityInterval = 1e6;    % interval to use in calculating velocity from encoder
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
-% baseLevelFactors = [20.58,11]; % for PMMA sample
-% baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+baseLevelFactors = [20.58,11]; % for PMMA sample
+baseLevelOffsets = [3.464,2.036]; % for PMMA sample
 baseLevelFactors = [21.06,11]; % for SWG sample
 baseLevelOffsets = [3.623,2.048]; % for SWG sample
 % Note: order of individual gages data is J3, J2, J1, I3 ,,,,,,,,,,,,,A3, A2, A1
@@ -26,14 +26,14 @@ baseLevelOffsets = [3.623,2.048]; % for SWG sample
 % defaultBaseVoltages = ones(2,15);
 defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
     147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
-% defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
-%     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
+defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
+     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
 % defaultBaseVoltages = [116.4	127.2	125.7	129.0	127.6	129.1	139.7	148.1	153.1	156.0	117.2	166.7	168.6	174.4	182.1;
 %    153.5	189.9	151.3	144.0	143.5	143.2	153.9	146.6	147.5	147.2	143.6	146.3	141.1	141.3	157.2]; % SWG data in mV in run 6151
-anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
-    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
-%anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
-%     49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
+% anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
+%    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
+anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
+     49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -79,8 +79,8 @@ end
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 5e2; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
- encoderSpacingThrsh = 5e2; % for diluted runs in which the frequency is reduced
- encoderXcorrWindow = 5e3; % for diluted runs in which the frequency is reduced
+% encoderSpacingThrsh = 1e2; % for diluted runs in which the frequency is reduced
+% encoderXcorrWindow = 1e4; % for diluted runs in which the frequency is reduced
 
 % execution begins here
 if ~isempty(filename)
@@ -137,17 +137,17 @@ cardToShow = [1,2];    % cards to display
 % chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
-% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
+chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
-chSN = [8,5,2;8,5,2];
+% chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [100,100];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [20,20];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0;    % offset between cards when plotting
-chOffset = 0;    % offset between channels within each card when plotting
+cardOffset = 0.2;    % offset between cards when plotting
+chOffset = 0.05;    % offset between channels within each card when plotting
 cardAmp = [1,1];
 encoderVelDis = 2;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
 sSlope = 2e2;    % slope of counter for scaling when plotting
@@ -155,7 +155,7 @@ vSlope = 2e2;    % slope of velocity for scaling when plotting
 encoderSlope = [0.01,0.1];
 accelCard = 2;    % only support one card
 accelCh = 16;    % only support one channel
-accelAmp = 5;
+accelAmp = 1;
 plotWithPeaksAligned = 1;
 scalePeaks = 0;
 baseVoltageSpan = 100;
@@ -404,20 +404,20 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
-smoothSpan = 20;    % used for BOTH 'plot' and 'export'
+smoothSpan = 50;    % used for BOTH 'plot' and 'export'
  detrendLines123 = 1; % setting for clear plotting 
  detrendLinesXYZ = 1; % setting for clear plotting
 % detrendLines123 = 0; % setting for true values relative to zero for export 
-%detrendLinesXYZ = 0; % setting for true values relative to zero for export
+% detrendLinesXYZ = 0; % setting for true values relative to zero for export
 % outputFormat = '123';
 outputFormat = 'XYZ';
 % cardOffset = 1e-3;
- chOffset = 1e-4;
-cardOffset = 1e-2;
-chOffset = 6e-4;
-chOffset = 0;
-cardOffset = 0; 
-chAmp = 1;
+chOffset = 1e-4;
+cardOffset = 7e-4;
+chOffset = 3e-4;
+% chOffset = 0;
+% cardOffset = 0; 
+chAmp = 100;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -577,11 +577,28 @@ for i = 1:length(filename)
         hold off
     end
 end
+% calculate mean of 10 gauges
+strainDatasMat = cell2mat(strainDatas);
+meanOfGauges = zeros(length(strainDatasMat),3);
+for i = 1:3
+    meanOfGauges(:,i) = mean(strainDatasMat(:,i:3:end),2);
+end
+% labels
 if isequal(exportOrPlot,'export')
+    xlswrite([filepath{1},'strain_',outputFormat,'_',name,' ',dt,'.xlsx'],...
+        {'avg1','avg2','avg3'}, [filename{1}(1:10),'mean'], 'A1');
+    xlswrite([filepath{1},'strain_',outputFormat,'_',name,' ',dt,'.xlsx'],...
+        meanOfGauges, [filename{1}(1:10),'mean'], 'A2');
     msgbox('finished.');
 else
+    hold on
+    for i = 1:3
+        plot(distanceData(:,i), i*cardOffset+3*chOffset+...
+            meanOfGauges(:,i)*chAmp,'color',color{mod(i-1,3)+1},'linewidth',2.5);
+    end
+    hold off
     if isequal(outputFormat,'123')
-        legend([chNames(1,1:15) chNames(2,1:15)]);
+        legend([chNames(1,1:15) chNames(2,1:15) {'avg1', 'avg2', 'avg3'}]);
     else
         chNamesXYZ = {};
         chTable = {'XX','YY','XY'};
@@ -590,12 +607,12 @@ else
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
         chNamesXYZ = reshape(chNamesXYZ, 2, 15);
-        legend([chNamesXYZ(1,:) chNamesXYZ(2,:)]);
+        legend([chNamesXYZ(1,:) chNamesXYZ(2,:) {'avg1', 'avg2', 'avg3'}]);
     end
 end
 
 %% Hide lines for XYZ
-hideLines = [1 1 0];    % XY, YY, XX respectively
+hideLines = [0 1 1];    % XY, YY, XX respectively
 for i = 1:2
     for j = 1:15
         if hideLines(mod(j-1,3)+1) == 1
@@ -626,7 +643,7 @@ velocityXYZ = ones(1,10);    % custom velocity
 % velocityXYZ = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
 % velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
-componentToDisplay = 3;  % 1:XY, 2:YY, 3:XX
+componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
