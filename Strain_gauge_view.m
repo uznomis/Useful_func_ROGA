@@ -578,6 +578,13 @@ for i = 1:length(filename)
     end
 end
 % calculate mean of 10 gauges
+l1 = length(strainDatas{1});
+l2 = length(strainDatas{2});
+if l1 > l2
+    strainDatas{1} = strainDatas{1}(1:l2,:);
+elseif l1 < l2
+    strainDatas{2} = strainDatas{2}(1:l1,:);
+end
 strainDatasMat = cell2mat(strainDatas);
 meanOfGauges = zeros(length(strainDatasMat),3);
 for i = 1:3
