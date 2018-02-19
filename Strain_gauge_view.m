@@ -14,22 +14,32 @@ velocityInterval = 1e6;    % interval to use in calculating velocity from encode
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
-baseLevelFactors = [20.58,11]; % for PMMA sample
-baseLevelOffsets = [3.464,2.036]; % for PMMA sample
-baseLevelFactors = [21.06,11]; % for SWG sample
-baseLevelOffsets = [3.623,2.048]; % for SWG sample
+% baseLevelFactors = [20.58,11]; % for PMMA sample
+% baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+
+% baseLevelFactors = [21.06,11]; % for SWG sample
+% baseLevelOffsets = [3.623,2.048]; % for SWG sample
+% baseLevelFactors = [11.30,15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
+% baseLevelOffsets = [1.68,2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
+baseLevelFactors = [11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30;
+                    15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
+baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
+                    2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
 % Note: order of individual gages data is J3, J2, J1, I3 ,,,,,,,,,,,,,A3, A2, A1
 % order of set of gages is J, I,  H, ,,,,A
 % [22.2 22.1 22.2 21.9 21.8 21.8 21.2 21.9 21.8 21.8 10.3 21.8 21.7 21.7 21.9
 % 11.0 10.8 11.0 11.1 11.1 11.0 11.0 11.1 11.0 11.1 10.4 11.0 11.1 11.1
 % 11.0] % amplification of SWG gages
 % defaultBaseVoltages = ones(2,15);
-defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
-    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
-defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
-     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
+
+% defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
+%    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
+% defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
+%     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
 % defaultBaseVoltages = [116.4	127.2	125.7	129.0	127.6	129.1	139.7	148.1	153.1	156.0	117.2	166.7	168.6	174.4	182.1;
 %    153.5	189.9	151.3	144.0	143.5	143.2	153.9	146.6	147.5	147.2	143.6	146.3	141.1	141.3	157.2]; % SWG data in mV in run 6151
+defaultBaseVoltages = [112.4 115.1 115.4 119.9 119.9 122.7 137.6 141.4 146.9 150 158.6 160.8 161.3 164.5 172.3;
+        143.5 189.4 152.5 152 140.5 141.7 156 144.8 138.5 139.4 145.6 141.4 145.6 143.5 144.6]; % SWG data in mV of Feb. 7, 2018
 % anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
 %    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
 anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
@@ -53,7 +63,7 @@ for i = 1:length(cardSN)
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
     raw_test{i} = test{i};
     test{i} = downsample(test{i},downsampleRate);
-    test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+baseLevelOffsets(i)) / baseLevelFactors(i);
+    test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+baseLevelOffsets(i,:)) ./ baseLevelFactors(i,:);
 end
 raw_freq = freq;
 freq = freq / downsampleRate;
@@ -76,11 +86,11 @@ end
 % then increase encoderSpacingThrsh and decrease otherwise, and if there is
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
-encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
-encoderSpacingThrsh = 5e2; % for high frequency run
+encoderShift = .5;    % encoder is usually 0/4.6 volts, so pick in between
+encoderSpacingThrsh = 2e3; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
 % encoderSpacingThrsh = 1e2; % for diluted runs in which the frequency is reduced
-% encoderXcorrWindow = 1e4; % for diluted runs in which the frequency is reduced
+% encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
 
 % execution begins here
 if ~isempty(filename)
@@ -131,13 +141,13 @@ end
 % plot different versions of data plots catered to your needs.
 
 % parameters to change before executing the following code
-cardToShow = [1,2];    % cards to display
-% chSN = [16,17;16,17];
+cardToShow = [1,2];    % cards to display% 
+chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
-chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
+% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
@@ -288,10 +298,14 @@ if exist('arrivalTimes','var')
         xRange = xRange + avg0*plotWithPeaksAligned;
     end
 end
+
+    
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 for i = 1:length(filename)
-    odata = [timecell{i} test{i}];
+    odata = [timecell{i} test{i}]; 
+    % odata = [timecell{i} data1]; % line added by ZR feb 8 2018 
+    
     leftInd = find(odata(:,1) > xRange(1),1,'first');
     rightInd = find(odata(:,1) < xRange(2),1,'last');
     if rightInd - leftInd > 500000
@@ -404,7 +418,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
-smoothSpan = 50;    % used for BOTH 'plot' and 'export'
+smoothSpan = 10;    % used for BOTH 'plot' and 'export'
  detrendLines123 = 1; % setting for clear plotting 
  detrendLinesXYZ = 1; % setting for clear plotting
 % detrendLines123 = 0; % setting for true values relative to zero for export 
@@ -412,12 +426,12 @@ smoothSpan = 50;    % used for BOTH 'plot' and 'export'
 % outputFormat = '123';
 outputFormat = 'XYZ';
 % cardOffset = 1e-3;
-chOffset = 1e-4;
-cardOffset = 7e-4;
-chOffset = 3e-4;
+chOffset = 2e-4;
+cardOffset = 2e-2;
+chOffset = 4e-3;
 % chOffset = 0;
 % cardOffset = 0; 
-chAmp = 100;
+chAmp = 1000;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
