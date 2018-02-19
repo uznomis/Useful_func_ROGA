@@ -17,18 +17,24 @@ fclose(fileID);
 ROGAc40matwithNaN = cell2mat(ROGAc40cell);
 M = ROGAc40matwithNaN(3:end-2,:);
 
+%% Re-initialize Database
+DB = [];
+
 %% Plot or Re-plot
 
 % Parameters
 indexOfTime = 21;
-indicesToPlot = [24, 27, 32];
+indicesToPlot = [24, 25, 32];
 indicesToSmoothen = [24];
 smoothSpan = 10;
-indicesToDot = [24, 27, 32];
+indicesToDot = [25];
+linewidth = 1;
+ylimits = [-0.1, 1.1];
+marker = '*';
 
 % Plot
 T = M(:,indexOfTime);
-if isvalid(fig)
+if exist('fig','var') && isvalid(fig)
     figure(fig);
     xRange = xlim;
     leftInd = find(T > xRange(1),1,'first');
@@ -51,14 +57,19 @@ for i = 1:length(indicesToPlot)
     toPlot = toPlot - min(toPlot(leftInd:rightInd));
     toPlot = toPlot/max(toPlot(leftInd:rightInd));
     if ismember(indicesToPlot(i), indicesToDot)
-        plot(T,toPlot,'linewidth',2,'marker','*');
+        plot(T,toPlot,'linewidth',linewidth,'marker',marker);
     else
-        plot(T,toPlot,'linewidth',2);
+        plot(T,toPlot,'linewidth',linewidth);
     end
 end
 hold off
 xlim(xRange);
+ylim(ylimits);
 legend(cellstr(num2str(indicesToPlot')));
+
+if 1
+    return
+end
 
 %% Reset Zoom
 xlim auto
@@ -69,13 +80,47 @@ format longE
 try
     dcm_obj = datacursormode(gcf);
     c_info = getCursorInfo(dcm_obj);
+    if (mod(length(c_info),2) == 1)
+        warning('You picked odd number of points.');
+        return
+    end
     c_info = fliplr(c_info);
-    xValue = c_info(1).Position(1);
-    ind = find(T > xValue,1,'first');
-    disp(['Time is ',num2str(xValue)]);
-    disp(['Columns are ', num2str(indicesToPlot)]);
-    disp('Values are:');
-    disp(M(ind, indicesToPlot)');
+    tempData = [];
+    for i = 1:length(c_info)
+        % display
+        xValue = c_info(i).Position(1);
+        xInd = find(T > xValue,1,'first');  
+        colInd = c_info(i).Target.DisplayName;
+        disp(['Time ',num2str(xValue),' Column ', colInd]);
+        disp([xValue M(xInd, str2double(colInd))]);
+        % store
+        tempData = [tempData; [str2double(colInd) xValue M(xInd, str2double(colInd))]];
+    end
+    tempData = sortrows(tempData,[1 2]);
+    tempData2 = reshape(tempData(:,2:3)',[],1);
+    tempData3 = tempData2';
+    DB = [DB;tempData3];
 catch ME
     error('Please repick.');
 end
+
+%% Undo the previous picking
+DB = DB(1:end-1,:);
+
+%% Export to Excel File
+[~,name,~] = fileparts(filename);
+header_ = cellstr(num2str(indicesToPlot'));
+headers = {};
+suffix = ['t1';'v1';'t2';'v2'];
+for i = 1:4
+    header = header_;
+    for j = 1:length(header)
+        header{j} = [header{j},'_',suffix(i,:)];
+    end
+    headers = [headers header];
+end
+headers = reshape(headers',[],1)';
+xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
+    headers, 'Sheet1', 'A1');
+xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
+    DB, 'Sheet1', 'A2');
