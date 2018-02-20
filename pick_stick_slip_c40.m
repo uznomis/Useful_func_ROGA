@@ -18,7 +18,7 @@ ROGAc40matwithNaN = cell2mat(ROGAc40cell);
 M = ROGAc40matwithNaN(3:end-2,:);
 
 %% Re-initialize Database
-DB = [];
+DB = {};
 
 %% Plot or Re-plot
 
@@ -80,10 +80,6 @@ format longE
 try
     dcm_obj = datacursormode(gcf);
     c_info = getCursorInfo(dcm_obj);
-    if (mod(length(c_info),2) == 1)
-        warning('You picked odd number of points.');
-        return
-    end
     c_info = fliplr(c_info);
     tempData = [];
     for i = 1:length(c_info)
@@ -94,33 +90,21 @@ try
         disp(['Time ',num2str(xValue),' Column ', colInd]);
         disp([xValue M(xInd, str2double(colInd))]);
         % store
-        tempData = [tempData; [str2double(colInd) xValue M(xInd, str2double(colInd))]];
+        tempData = [tempData [str2double(colInd) NaN; xValue M(xInd, str2double(colInd))]];
     end
-    tempData = sortrows(tempData,[1 2]);
-    tempData2 = reshape(tempData(:,2:3)',[],1);
-    tempData3 = tempData2';
-    DB = [DB;tempData3];
+    DB = [DB {tempData}];
 catch ME
-    error('Please repick.');
+    error('Error. Please see ME for details.');
 end
 
 %% Undo the previous picking
-DB = DB(1:end-1,:);
+DB = DB(1:end-1);
 
 %% Export to Excel File
 [~,name,~] = fileparts(filename);
-header_ = cellstr(num2str(indicesToPlot'));
-headers = {};
-suffix = ['t1';'v1';'t2';'v2'];
-for i = 1:4
-    header = header_;
-    for j = 1:length(header)
-        header{j} = [header{j},'_',suffix(i,:)];
-    end
-    headers = [headers header];
+dt = datestr(now,'mm_dd_yyyy_HH_MM_SS');
+for i = 1:length(DB)
+    xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
+        DB{i}, ['Picked_at_',dt], ['A',num2str(1 + 2*(i-1))]);
 end
-headers = reshape(headers',[],1)';
-xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
-    headers, 'Sheet1', 'A1');
-xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
-    DB, 'Sheet1', 'A2');
+msgbox('Done.');
