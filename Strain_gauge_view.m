@@ -63,7 +63,10 @@ for i = 1:length(cardSN)
     test{i} = reshape(test{i}, [length(test{i})/17 17]);
     raw_test{i} = test{i};
     test{i} = downsample(test{i},downsampleRate);
-    test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+baseLevelOffsets(i,:)) ./ baseLevelFactors(i,:);
+    r_dim = [length(test{1}) 1];
+    test{i}(:,1:15) = 1e3*(test{i}(:,1:15)+...
+        repmat(baseLevelOffsets(i,:),r_dim))...
+        ./ repmat(baseLevelFactors(i,:),r_dim);
 end
 raw_freq = freq;
 freq = freq / downsampleRate;
