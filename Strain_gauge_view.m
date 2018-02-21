@@ -89,8 +89,8 @@ end
 % then increase encoderSpacingThrsh and decrease otherwise, and if there is
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
-encoderShift = .5;    % encoder is usually 0/4.6 volts, so pick in between
-encoderSpacingThrsh = 2e3; % for high frequency run
+encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
+encoderSpacingThrsh = 2e5; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
 % encoderSpacingThrsh = 1e2; % for diluted runs in which the frequency is reduced
 % encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
@@ -98,42 +98,46 @@ encoderXcorrWindow = 1e6; % for high frequency run
 % execution begins here
 if ~isempty(filename)
     % calc timeshift of cards
-    encodercurrent = 1;
-    encoderbefore = 0;
-    encoderjump = 1;
-    spacing = 0;
-    data1 = test{1};
+    trace = cell(1,length(test));
     encoderjumpavg = zeros(1,length(test) - 1);
+    encoderjumps = zeros(1,length(test));
     if encoderAvailable == 1
-        encoderCh1 = encoderChannels(1);
-        for j = 2:length(data1)
-            if (data1(j-1,encoderCh1) - encoderShift)*...
-                    (data1(j,encoderCh1) - encoderShift) < 0
-                encoderbefore = encodercurrent;
-                encodercurrent = j;
-                spacing = encodercurrent - encoderbefore;
-                if spacing < encoderSpacingThrsh && encoderbefore > 1
-                    encoderjump = encodercurrent;
-                    break;
+        for ii = 1:length(test)
+            encodercurrent = 1;
+            encoderbefore = 0;
+            encoderjump = 1;
+            spacing = 0;
+            data1 = test{ii};
+            encoderCh1 = encoderChannels(ii);
+            for j = 2:length(data1)
+                if (data1(j-1,encoderCh1) - encoderShift)*...
+                        (data1(j,encoderCh1) - encoderShift) < 0
+                    encoderbefore = encodercurrent;
+                    encodercurrent = j;
+                    spacing = encodercurrent - encoderbefore;
+                    if spacing < encoderSpacingThrsh && encoderbefore > 1
+                        encoderjump = encodercurrent;
+                        break;
+                    end
                 end
             end
+            encoderjumps(ii) = encoderjump;
+            trace{ii} = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
         end
-        s1 = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
         
         for i=2:length(test)
-            s2 = test{i}(encoderjump: encoderjump + encoderXcorrWindow,encoderChannels(i));
-            [r,lag] = xcorr(s1,s2);
+            [r,lag] = xcorr(trace{1},trace{i});
             [~,I] = max(abs(r));
             encoderjumpavg(i-1) = round(-lag(I));
         end
     end
     % create time col vector
     timecell = cell(1,length(test));
-    timecell{1} = 1/freq * (1:length(data1))';
+    timecell{1} = 1/freq * (1:length(test{1}))';
     
     for i=2:length(test)
         timecell{i} = ...
-            timecell{1}-encoderjumpavg(i-1)/freq; % apply time shift
+            timecell{1}-(encoderjumpavg(i-1)+encoderjumps(i)-encoderjumps(1))/freq; % apply time shift
     end
     
 end
@@ -159,7 +163,7 @@ chSN = [16,17;16,17];
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
 smoothSpan = [20,20];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
-cardOffset = 0.2;    % offset between cards when plotting
+cardOffset = 0.0;    % offset between cards when plotting
 chOffset = 0.05;    % offset between channels within each card when plotting
 cardAmp = [1,1];
 encoderVelDis = 2;    % velocity & distance from encoder; 0 for not plotting; 1 for only velocity; 2 for v & d
