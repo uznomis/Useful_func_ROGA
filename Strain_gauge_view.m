@@ -49,8 +49,12 @@ anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
 filename = cell(1,length(cardSN));
 filepath = cell(1,length(cardSN));
 for i = 1:length(cardSN)
+    temppath = '*.txt';
+    if i > 1
+        temppath = [filepath{i-1}, temppath];
+    end
     [filename{i}, filepath{i}] = uigetfile...
-        ('C:\Users\User\Desktop\ROGA Terminal\data\*.*',...
+        (temppath,...
         ['Please select ACQ100', num2str(cardSN(i))]);
     if filename{i} == 0
         return
