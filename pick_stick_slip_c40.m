@@ -97,6 +97,7 @@ DB = DB(1:end-1);
 
 %% Export to Excel File
 exportMode = 'by column';
+sortByTime = 1;
 [~,name,~] = fileparts(filename);
 dt = datestr(now,'mm_dd_yyyy_HH_MM_SS');
 switch exportMode
@@ -120,8 +121,13 @@ switch exportMode
                 continue;
             end
             cnt = cnt + 1;
+            if sortByTime
+                toExport = sortrows(exportByColumn{i});
+            else
+                toExport = exportByColumn{i};
+            end
             xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
-                [i, NaN; exportByColumn{i}], ['Picked_at_',dt],...
+                [i, NaN; toExport], ['Picked_at_',dt],...
                 [char(65+(cnt-1)*2),'1']);
         end
     otherwise
