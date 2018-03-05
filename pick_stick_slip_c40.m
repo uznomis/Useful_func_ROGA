@@ -13,12 +13,15 @@ M = ROGAc40matwithNaN(3:end-2,:);
 
 %% Re-initialize Database
 DB = {};
+prevDBValues = [];
+DBValues = [];
 
 %% Plot or Re-plot
 
 % Parameters
 indexOfTime = 21;
 indicesToPlot = [24, 25];
+indicesToExtract = [24, 25, 26, 27];
 indicesToSmoothen = [24];
 smoothSpan = 10;
 indicesToDot = [];
@@ -76,6 +79,7 @@ try
     c_info = getCursorInfo(dcm_obj);
     c_info = fliplr(c_info);
     tempData = [];
+    prevDBValues = DBValues;
     for i = 1:length(c_info)
         % display
         xValue = c_info(i).Position(1);
@@ -85,6 +89,7 @@ try
         disp([xValue M(xInd, str2double(colInd))]);
         % store
         tempData = [tempData [str2double(colInd) NaN; xValue M(xInd, str2double(colInd))]];
+        DBValues = [DBValues; [xValue M(xInd, indicesToExtract)]];
     end
     disp('------');
     DB = [DB {tempData}];
@@ -94,9 +99,10 @@ end
 
 %% Undo the previous picking
 DB = DB(1:end-1);
+DBValues = prevDBValues;
 
 %% Export to Excel File
-exportMode = 'by column';
+exportMode = 'extract values';
 sortByTime = 1;
 [~,name,~] = fileparts(filename);
 dt = datestr(now,'mm_dd_yyyy_HH_MM_SS');
@@ -130,6 +136,14 @@ switch exportMode
                 [i, NaN; toExport], ['Picked_at_',dt],...
                 [char(65+(cnt-1)*2),'1']);
         end
+    case 'extract values'
+        if sortByTime
+            toExport = sortrows(DBValues);
+        else
+            toExport = DBValues;
+        end
+        xlswrite([filepath,'Stick_slip_',name,'.xlsx'],...
+            [[indexOfTime indicesToExtract]; toExport], ['Picked_at_',dt], 'A1');
     otherwise
         disp('Please specify a valid export mode.');
 end
