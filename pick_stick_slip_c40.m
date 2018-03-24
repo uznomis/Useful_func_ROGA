@@ -11,6 +11,14 @@ end
 ROGAc40matwithNaN = dlmread([filepath,filename],'',1,0);
 M = ROGAc40matwithNaN(3:end-2,:);
 
+%% Differentiate
+% Parameters
+indexOfTime = 21;
+indicesToDiff = [24 25];
+for i = 1:length(indicesToDiff)
+    M(2:end,end+1) = diff(M(:,indicesToDiff(i)))./diff(M(:,indexOfTime));
+end
+
 %% Re-initialize Database
 DB = {};
 prevDBValues = [];
@@ -19,7 +27,6 @@ DBValues = [];
 %% Plot or Re-plot
 
 % Parameters
-indexOfTime = 21;
 indicesToPlot = [24, 25];
 indicesToExtract = [24, 25, 26, 27];
 indicesToSmoothen = [24];
