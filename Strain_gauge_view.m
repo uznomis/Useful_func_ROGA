@@ -21,10 +21,11 @@ lenPerSector = 1.5e-6;    % encoder sector length in meters
 % baseLevelOffsets = [3.623,2.048]; % for SWG sample
 % baseLevelFactors = [11.30,15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
 % baseLevelOffsets = [1.68,2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
-baseLevelFactors = [11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30 11.30;
-                    15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60 15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
+baseLevelFactors = [14.94 11.09 11.10 11.19 11.04 11. 10.97 11.02 11.0 10.97 10.99 11.01 10.99 10.97 11.05;
+    14.37 10.73 10.7 10.1 10.79 10.77 10.78 19.44 19.45 19.46 19.47 19.39 19.48 19.44 19.43]; % for SWG sample, Measured VALUES FEB. 9 2018
 baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
-                    2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6 2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
+    2.04 2.04 2.04 2.04 2.03 2.04 1.8 3.29 3.24 3.25 3.30 3.26 3.30 3.28 3.29]; % for SWG sample, Calculated VALUES FEB. 9 2018
+
 % Note: order of individual gages data is J3, J2, J1, I3 ,,,,,,,,,,,,,A3, A2, A1
 % order of set of gages is J, I,  H, ,,,,A
 % [22.2 22.1 22.2 21.9 21.8 21.8 21.2 21.9 21.8 21.8 10.3 21.8 21.7 21.7 21.9
@@ -39,25 +40,27 @@ baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 
 % defaultBaseVoltages = [116.4	127.2	125.7	129.0	127.6	129.1	139.7	148.1	153.1	156.0	117.2	166.7	168.6	174.4	182.1;
 %    153.5	189.9	151.3	144.0	143.5	143.2	153.9	146.6	147.5	147.2	143.6	146.3	141.1	141.3	157.2]; % SWG data in mV in run 6151
 defaultBaseVoltages = [112.4 115.1 115.4 119.9 119.9 122.7 137.6 141.4 146.9 150 158.6 160.8 161.3 164.5 172.3;
-        143.5 189.4 152.5 152 140.5 141.7 156 144.8 138.5 139.4 145.6 141.4 145.6 143.5 144.6]; % SWG data in mV of Feb. 7, 2018
+    143.5 189.4 152.5 152 140.5 141.7 156 144.8 138.5 139.4 145.6 141.4 145.6 143.5 144.6]; % SWG data in mV of Feb. 7, 2018
 % anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
 %    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
 anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
-     49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
+    49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
 
 %% Importing
 filename = cell(1,length(cardSN));
 filepath = cell(1,length(cardSN));
 for i = 1:length(cardSN)
-    temppath = '*.txt';
-    if i > 1
-        temppath = [filepath{i-1}, temppath];
+    if ~exist('temppath','var')
+        temppath = '*.txt';
     end
     [filename{i}, filepath{i}] = uigetfile...
         (temppath,...
         ['Please select ACQ100', num2str(cardSN(i))]);
+    
     if filename{i} == 0
         return
+    else
+        temppath = [filepath{i},'*.txt'];
     end
 end
 test = cell(1,length(cardSN));
@@ -96,6 +99,7 @@ end
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 2e5; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
+% encoderSpacingThrsh = 3.5e4; % encoderXcorrWindow = 7.05e5; % for run 7118
 % encoderSpacingThrsh = 1e2; % for diluted runs in which the frequency is reduced
 % encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
 
@@ -152,20 +156,20 @@ end
 % plot different versions of data plots catered to your needs.
 
 % parameters to change before executing the following code
-cardToShow = [1,2];    % cards to display% 
-chSN = [16,17;16,17];
+cardToShow = [1,2];    % cards to display%
+% chSN = [16,17;16,17];
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
-% chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
+chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
-smoothSpan = [20,20];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
+smoothSpan = [50,50];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
 cardOffset = 0.0;    % offset between cards when plotting
 chOffset = 0.05;    % offset between channels within each card when plotting
@@ -310,12 +314,12 @@ if exist('arrivalTimes','var')
     end
 end
 
-    
+
 dt = datestr(now,'mmmm_dd_yyyy_HH_MM_SS');
 [~,name,~] = fileparts(filename{1});
 for i = 1:length(filename)
-    odata = [timecell{i} test{i}]; 
-    % odata = [timecell{i} data1]; % line added by ZR feb 8 2018 
+    odata = [timecell{i} test{i}];
+    % odata = [timecell{i} data1]; % line added by ZR feb 8 2018
     
     leftInd = find(odata(:,1) > xRange(1),1,'first');
     rightInd = find(odata(:,1) < xRange(2),1,'last');
@@ -353,7 +357,7 @@ baseVoltageIndices = cell(size(lineHandles,1), size(lineHandles,2));
 %% Picking for curve aligning
 try
     dcm_obj = datacursormode(gcf);
-    c_info = getCursorInfo(dcm_obj);   
+    c_info = getCursorInfo(dcm_obj);
     if mod(length(c_info),2) ~= 0
         error('Repick!');
     end
@@ -368,7 +372,7 @@ try
                 end
             end
         end
-    end    
+    end
     msgbox(['Please re-plot now. FYI, last peak you picked was at ',...
         num2str(xValue),' s.']);
 catch ME
@@ -430,19 +434,19 @@ GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
 smoothSpan = 10;    % used for BOTH 'plot' and 'export'
- detrendLines123 = 1; % setting for clear plotting 
- detrendLinesXYZ = 1; % setting for clear plotting
-% detrendLines123 = 0; % setting for true values relative to zero for export 
-% detrendLinesXYZ = 0; % setting for true values relative to zero for export
+detrendLines123 = 1; % setting for clear plotting
+detrendLinesXYZ = 1; % setting for clear plotting
+% detrendLines123 = 0; % setting for true values relative to zero for export
+detrendLinesXYZ = 0; % setting for true values relative to zero for export
 % outputFormat = '123';
 outputFormat = 'XYZ';
-% cardOffset = 1e-3;
-chOffset = 2e-4;
-cardOffset = 2e-2;
-chOffset = 4e-3;
+cardOffset = 1e-3;
+chOffset = 4e-4;
+cardOffset = 8e-2;
+chOffset = 6e-3;
 % chOffset = 0;
-% cardOffset = 0; 
-chAmp = 1000;
+% cardOffset = 0;
+chAmp = 3000;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -488,7 +492,7 @@ for i = 1:length(filename)
         if useAverageOfPicks
             tempV = averageArrivalTimes(5*(i-1)+1:5*i);
             arrivalTime = reshape([tempV;tempV;tempV],1,15);
-        else            
+        else
             for j = 1:15
                 if ~isempty(arrivalTimes{i,j})
                     arrivalTime(j) = arrivalTimes{i,j};
@@ -514,7 +518,7 @@ for i = 1:length(filename)
         if useAverageOfPicks
             tempI = averageBaseVoltageIndices(5*(i-1)+1:5*i);
             baseVoltageInd = reshape([tempI;tempI;tempI],1,15);
-        end        
+        end
         for j = 1:15
             if useAverageOfPicks
                 baseVoltage(j) = odata(baseVoltageInd(j),j);
@@ -523,7 +527,7 @@ for i = 1:length(filename)
             end
         end
     else
-         baseVoltage = odata(leftInd,:);
+        baseVoltage = odata(leftInd,:);
     end
     strainData123 = (odata(leftInd:rightInd,:)./...
         (ones(1-leftInd+rightInd,1)*defaultBaseVoltages(i,:))-1)./GF;
@@ -719,7 +723,7 @@ for i = 1:2
             plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
                 *velocityXYZ(ceil(((i-1)*15+j)/3)),...
-                strainDatas{i}(:,j)+ mod(j-1,3)*componentOffset);            
+                strainDatas{i}(:,j)+ mod(j-1,3)*componentOffset);
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
