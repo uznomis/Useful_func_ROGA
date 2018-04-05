@@ -436,7 +436,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
-exportOrPlot = 'export'; % enter 'export' for saving data
+exportOrPlot = 'plot'; % enter 'export' for saving data
 smoothSpan = 10;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1; % setting for clear plotting
 detrendLinesXYZ = 1; % setting for clear plotting
@@ -686,6 +686,9 @@ componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
 componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
 alignStart = 1; % select 1 if you want to align the left of the trace, select 0 if XY YY XX are plotted with offsets
 ampArray = [5 5 5 5 5 5 5 5 5 5];
+autoAmp = 1;
+plotOpt = '.'; % for plotting in dots
+% plotOpt = '-'; % for plotting in lines
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -726,12 +729,16 @@ for i = 1:2
     rightInd = find(timecell{i} < xRange(2),1,'last');
     for j = 1:15
         if XYZPicks(i,j) ~= 0
+            % magic happens in the next sentence, read carefully before
+            % changing any of it
             plot(0-(timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
                 *velocityXYZ(ceil(((i-1)*15+j)/3)),...
-                strainDatas{i}(:,j)*ampArray(ceil(((i-1)*15+j)/3)) ...
+                (strainDatas{i}(:,j) ...
                 + (1-alignStart)*mod(j-1,3)*componentOffset...
-                + alignStart*strainDatas{i}(leftInd,j));
+                - alignStart*strainDatas{i}(end,j))...
+                *ampArray(ceil(((i-1)*15+j)/3)).^(1-autoAmp)...
+                ./strainDatas{i}(end,j).^autoAmp,plotOpt);
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
