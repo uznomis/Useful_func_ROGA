@@ -8,7 +8,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 1e6;    % freqeuncy in Hz
-downsampleRate = 1;    % remember to also change parameters in Sync cards properly
+downsampleRate = 10;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 velocityInterval = 1e6;    % interval to use in calculating velocity from encoder
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
@@ -16,14 +16,18 @@ encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, ther
 lenPerSector = 1.5e-6;    % encoder sector length in meters
 % baseLevelFactors = [20.58,11]; % for PMMA sample
 % baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+% baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58; 
+%   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample
+% baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 ;
+%    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample
 
 % baseLevelFactors = [21.06,11]; % for SWG sample
 % baseLevelOffsets = [3.623,2.048]; % for SWG sample
 % baseLevelFactors = [11.30,15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
 % baseLevelOffsets = [1.68,2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
-baseLevelFactors = [14.94 11.09 11.10 11.19 11.04 11. 10.97 11.02 11.0 10.97 10.99 11.01 10.99 10.97 11.05;
+ baseLevelFactors = [14.94 11.09 11.10 11.19 11.04 11. 10.97 11.02 11.0 10.97 10.99 11.01 10.99 10.97 11.05;
     14.37 10.73 10.7 10.1 10.79 10.77 10.78 19.44 19.45 19.46 19.47 19.39 19.48 19.44 19.43]; % for SWG sample, Measured VALUES FEB. 9 2018
-baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
+ baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
     2.04 2.04 2.04 2.04 2.03 2.04 1.8 3.29 3.24 3.25 3.30 3.26 3.30 3.28 3.29]; % for SWG sample, Calculated VALUES FEB. 9 2018
 
 % Note: order of individual gages data is J3, J2, J1, I3 ,,,,,,,,,,,,,A3, A2, A1
@@ -100,8 +104,8 @@ encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 2e5; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
 % encoderSpacingThrsh = 3.5e4; % encoderXcorrWindow = 7.05e5; % for run 7118
-% encoderSpacingThrsh = 1e2; % for diluted runs in which the frequency is reduced
-% encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
+encoderSpacingThrsh = 1e3; % for diluted runs in which the frequency is reduced
+encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
 
 % execution begins here
 if ~isempty(filename)
@@ -432,7 +436,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
-exportOrPlot = 'plot'; % enter 'export' for saving data
+exportOrPlot = 'export'; % enter 'export' for saving data
 smoothSpan = 10;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1; % setting for clear plotting
 detrendLinesXYZ = 1; % setting for clear plotting
@@ -441,12 +445,12 @@ detrendLinesXYZ = 0; % setting for true values relative to zero for export
 % outputFormat = '123';
 outputFormat = 'XYZ';
 cardOffset = 1e-3;
-chOffset = 4e-4;
-cardOffset = 8e-2;
-chOffset = 6e-3;
-% chOffset = 0;
-% cardOffset = 0;
-chAmp = 3000;
+chOffset = 5e-4;
+cardOffset = 9e-2;
+chOffset = 7e-3;
+chOffset = 0;
+cardOffset = 0;
+chAmp = 1;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -676,10 +680,11 @@ clear('fixedZoom');
 customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
 velocityXYZ = ones(1,10);    % custom velocity
 % velocityXYZ   I-J,  H-I, G-H, F-G,   E-F,  D-E,  C-D,  B-C,  A-B, J-A
-% velocityXYZ = [408 -199 -403 628 -21 33 78 234 897 408];    % custom velocities
+velocityXYZ = [20 5 5 5 5 5 5 5 5 5];    % custom velocities
 % velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
 componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
+alignStart = 1; % select 1 if you want to align the left of the trace, select 0 if XY YY XX are plotted with offsets
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -706,7 +711,7 @@ try
 catch ME
     error('Please repick.');
 end
-if exist('figPicked','var')
+if exist('figPicked','var') && isvalid(figPicked) 
     figure(figPicked);
 else
     figPicked = figure('Name',['strain_picked_',name]);
@@ -720,10 +725,11 @@ for i = 1:2
     rightInd = find(timecell{i} < xRange(2),1,'last');
     for j = 1:15
         if XYZPicks(i,j) ~= 0
-            plot((timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
+            plot(0-(timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
                 *velocityXYZ(ceil(((i-1)*15+j)/3)),...
-                strainDatas{i}(:,j)+ mod(j-1,3)*componentOffset);
+                strainDatas{i}(:,j)+ (1-alignStart)*mod(j-1,3)*componentOffset...
+                + alignStart*strainDatas{i}(leftInd,j));
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
