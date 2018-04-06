@@ -437,7 +437,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
-smoothSpan = 10;    % used for BOTH 'plot' and 'export'
+smoothSpan = 20;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1; % setting for clear plotting
 detrendLinesXYZ = 1; % setting for clear plotting
 % detrendLines123 = 0; % setting for true values relative to zero for export
@@ -448,9 +448,9 @@ cardOffset = 1e-3;
 chOffset = 5e-4;
 cardOffset = 9e-2;
 chOffset = 7e-3;
-chOffset = 0;
-cardOffset = 0;
-chAmp = 1;
+% chOffset = 0;
+% cardOffset = 0;
+chAmp = 4000;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -680,16 +680,17 @@ clear('fixedZoom');
 customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
 velocityXYZ = ones(1,10);    % custom velocity
 % velocityXYZ   I-J,  H-I, G-H, F-G,   E-F,  D-E,  C-D,  B-C,  A-B, J-A
-velocityXYZ = [20 5 5 5 5 5 5 5 5 5];    % custom velocities
+velocityXYZ = [5 5 5 5 5 5 3 3 5 5];    % custom velocities
 % velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
 componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX for display in command line only
 alignOption = 'right'; % 'left'; 'right'; 'none' ('none' means XX YY XY are separated by componentOffset)
 widthToAlign = 100; % how long of a segment (num of points) on the left (right) is used to aligning
-ampArray = [5 5 5 5 5 5 5 5 5 5];
-autoAmp = 1; % automatically calculates amplification instead of using ampArray
+ampArray = [0.5 2 1 1 1 1 3 1 1 0.5];
+autoAmp = 0; % automatically calculates amplification instead of using ampArray
 plotOpt = '.'; % for plotting in dots
 % plotOpt = '-'; % for plotting in lines
+smoothSpan = 10;
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
@@ -747,7 +748,7 @@ for i = 1:2
             plot(0-(timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
                 *velocityXYZ(ceil(((i-1)*15+j)/3)),...
-                (strainDatas{i}(:,j) ...
+                (smooth(strainDatas{i}(:,j),smoothSpan) ...
                 - alignOffsets(ceil(((i-1)*15+j)/3)))...
                 *ampArray(ceil(((i-1)*15+j)/3)), plotOpt);
             chName = chNames{i,j};
