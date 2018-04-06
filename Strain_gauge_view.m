@@ -683,10 +683,11 @@ velocityXYZ = ones(1,10);    % custom velocity
 velocityXYZ = [20 5 5 5 5 5 5 5 5 5];    % custom velocities
 % velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
-componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX
-alignStart = 1; % select 1 if you want to align the left of the trace, select 0 if XY YY XX are plotted with offsets
+componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX for display in command line only
+alignOption = 'right'; % 'left'; 'right'; 'none' ('none' means XX YY XY are separated by componentOffset)
+widthToAlign = 100; % how long of a segment (num of points) on the left (right) is used to aligning
 ampArray = [5 5 5 5 5 5 5 5 5 5];
-autoAmp = 1;
+autoAmp = 1; % automatically calculates amplification instead of using ampArray
 plotOpt = '.'; % for plotting in dots
 % plotOpt = '-'; % for plotting in lines
 
@@ -723,6 +724,7 @@ end
 clf(figPicked);
 chNamesXYZ = {};
 chTable = {'XX','YY','XY'};
+alignOffsets = zeros(1,10);
 hold on
 for i = 1:2
     leftInd = find(timecell{i} > xRange(1),1,'first');
@@ -731,14 +733,23 @@ for i = 1:2
         if XYZPicks(i,j) ~= 0
             % magic happens in the next sentence, read carefully before
             % changing any of it
+            if autoAmp
+                ampArray(ceil(((i-1)*15+j)/3)) = 1/abs(mean(strainDatas{i}(end-widthToAlign+1:end,j))...
+                    -mean(strainDatas{i}(1:widthToAlign,j)));
+            end
+            if isequal(alignOption, 'left')
+                alignOffsets(ceil(((i-1)*15+j)/3)) = mean(strainDatas{i}(end-widthToAlign+1:end,j));
+            elseif isequal(alignOption, 'right')
+                alignOffsets(ceil(((i-1)*15+j)/3)) = mean(strainDatas{i}(1:widthToAlign,j));
+            elseif isequal(alignOption, 'none')
+                 alignOffsets(ceil(((i-1)*15+j)/3)) = -mod(j-1,3)*componentOffset;
+            end
             plot(0-(timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
                 *velocityXYZ(ceil(((i-1)*15+j)/3)),...
                 (strainDatas{i}(:,j) ...
-                + (1-alignStart)*mod(j-1,3)*componentOffset...
-                - alignStart*strainDatas{i}(end,j))...
-                *ampArray(ceil(((i-1)*15+j)/3)).^(1-autoAmp)...
-                ./strainDatas{i}(end,j).^autoAmp,plotOpt);
+                - alignOffsets(ceil(((i-1)*15+j)/3)))...
+                *ampArray(ceil(((i-1)*15+j)/3)), plotOpt);
             chName = chNames{i,j};
             chNamesXYZ = [chNamesXYZ {[chName(1),chTable{str2double(chName(2))}]}];
         end
