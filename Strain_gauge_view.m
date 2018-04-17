@@ -8,7 +8,7 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 1e6;    % freqeuncy in Hz
-downsampleRate = 10;    % remember to also change parameters in Sync cards properly
+downsampleRate = 1;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 velocityInterval = 1e6;    % interval to use in calculating velocity from encoder
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
@@ -16,19 +16,19 @@ encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, ther
 lenPerSector = 1.5e-6;    % encoder sector length in meters
 % baseLevelFactors = [20.58,11]; % for PMMA sample
 % baseLevelOffsets = [3.464,2.036]; % for PMMA sample
-% baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58; 
-%   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample
-% baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 ;
-%    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample
+baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58; 
+   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample
+baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 ;
+    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample
 
 % baseLevelFactors = [21.06,11]; % for SWG sample
 % baseLevelOffsets = [3.623,2.048]; % for SWG sample
 % baseLevelFactors = [11.30,15.60]; % for SWG sample, MEAN VALUES FEB. 9 2018
 % baseLevelOffsets = [1.68,2.6]; % for SWG sample, MEAN VALUES FEB. 9 2018
- baseLevelFactors = [14.94 11.09 11.10 11.19 11.04 11. 10.97 11.02 11.0 10.97 10.99 11.01 10.99 10.97 11.05;
-    14.37 10.73 10.7 10.1 10.79 10.77 10.78 19.44 19.45 19.46 19.47 19.39 19.48 19.44 19.43]; % for SWG sample, Measured VALUES FEB. 9 2018
- baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
-    2.04 2.04 2.04 2.04 2.03 2.04 1.8 3.29 3.24 3.25 3.30 3.26 3.30 3.28 3.29]; % for SWG sample, Calculated VALUES FEB. 9 2018
+% baseLevelFactors = [14.94 11.09 11.10 11.19 11.04 11. 10.97 11.02 11.0 10.97 10.99 11.01 10.99 10.97 11.05;
+%    14.37 10.73 10.7 10.1 10.79 10.77 10.78 19.44 19.45 19.46 19.47 19.39 19.48 19.44 19.43]; % for SWG sample, Measured VALUES FEB. 9 2018
+% baseLevelOffsets = [1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68 1.68;
+%    2.04 2.04 2.04 2.04 2.03 2.04 1.8 3.29 3.24 3.25 3.30 3.26 3.30 3.28 3.29]; % for SWG sample, Calculated VALUES FEB. 9 2018
 
 % Note: order of individual gages data is J3, J2, J1, I3 ,,,,,,,,,,,,,A3, A2, A1
 % order of set of gages is J, I,  H, ,,,,A
@@ -37,18 +37,21 @@ lenPerSector = 1.5e-6;    % encoder sector length in meters
 % 11.0] % amplification of SWG gages
 % defaultBaseVoltages = ones(2,15);
 
-% defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
-%    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
+defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
+    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
 % defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
 %     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
 % defaultBaseVoltages = [116.4	127.2	125.7	129.0	127.6	129.1	139.7	148.1	153.1	156.0	117.2	166.7	168.6	174.4	182.1;
 %    153.5	189.9	151.3	144.0	143.5	143.2	153.9	146.6	147.5	147.2	143.6	146.3	141.1	141.3	157.2]; % SWG data in mV in run 6151
-defaultBaseVoltages = [112.4 115.1 115.4 119.9 119.9 122.7 137.6 141.4 146.9 150 158.6 160.8 161.3 164.5 172.3;
-    143.5 189.4 152.5 152 140.5 141.7 156 144.8 138.5 139.4 145.6 141.4 145.6 143.5 144.6]; % SWG data in mV of Feb. 7, 2018
-% anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
-%    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
-anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
-    49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
+% defaultBaseVoltages = [112.4 115.1 115.4 119.9 119.9 122.7 137.6 141.4 146.9 150 158.6 160.8 161.3 164.5 172.3;
+%    143.5 189.4 152.5 152 140.5 141.7 156 144.8 138.5 139.4 145.6 141.4 145.6 143.5 144.6]; % SWG data in mV of Feb. 7, 2018
+anglesRelativeToFault = [55.8000 47.9000 43.4000 50.8000 41.6000;
+    54.5000 45.3000 47.2000 46.4000 40.6000]; % data for PMMA
+distanceFromFault = [2.1 2.4 2.1 2.1 2.3 2.15 2.2 2.7 2.3 2]; % distance from fault in mm for PMMA
+% distanceBetweenGauges = 36.05 32.9 33.15 30.45 32.64 30.85 30.85 31.1
+%       31.1 31.8 % distance between gouges in mm for PMMA for the following order: J to A, I to J, .... A to B
+% anglesRelativeToFault = [54.0000    51.0000 44.0000 51.0000 46.0000;
+%    49.0000    42.0000 54.0000 48.0000 53.0000]; % data for SWG
 
 %% Importing
 filename = cell(1,length(cardSN));
@@ -104,8 +107,8 @@ encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
 encoderSpacingThrsh = 2e5; % for high frequency run
 encoderXcorrWindow = 1e6; % for high frequency run
 % encoderSpacingThrsh = 3.5e4; % encoderXcorrWindow = 7.05e5; % for run 7118
-encoderSpacingThrsh = 1e3; % for diluted runs in which the frequency is reduced
-encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
+% encoderSpacingThrsh = 1e3; % for diluted runs in which the frequency is reduced
+% encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
 
 % execution begins here
 if ~isempty(filename)
@@ -437,11 +440,11 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
-smoothSpan = 20;    % used for BOTH 'plot' and 'export'
+smoothSpan = 2;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1; % setting for clear plotting
 detrendLinesXYZ = 1; % setting for clear plotting
 % detrendLines123 = 0; % setting for true values relative to zero for export
-detrendLinesXYZ = 0; % setting for true values relative to zero for export
+detrendLinesXYZ = 1; % setting for true values relative to zero for export
 % outputFormat = '123';
 outputFormat = 'XYZ';
 cardOffset = 1e-3;
@@ -450,7 +453,7 @@ cardOffset = 9e-2;
 chOffset = 7e-3;
 % chOffset = 0;
 % cardOffset = 0;
-chAmp = 4000;
+chAmp = 500;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -557,9 +560,11 @@ for i = 1:length(filename)
     end
     strainDataXYZ_ = strainDataXYZ;
     strainDataXYZ = [];
+    distanceFromFaultBar = mean(distanceFromFault);
     for j = 1:5
         strainDataXYZ = [strainDataXYZ...
-            strainDataXYZ_((rightInd - leftInd +1)*(j-1)+1:(rightInd - leftInd +1)*j,:)];
+            strainDataXYZ_((rightInd - leftInd +1)*(j-1)+1:(rightInd - leftInd +1)*j,:)...
+            .*(distanceFromFault((i-1)*5+j)/distanceFromFaultBar)^(-1/2)];
     end
     strainDataXYZ = strainDataXYZ - detrendLinesXYZ*...
         ones(1-leftInd+rightInd,1)*strainDataXYZ(1,:);
@@ -680,16 +685,17 @@ clear('fixedZoom');
 customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
 velocityXYZ = ones(1,10);    % custom velocity
 % velocityXYZ   I-J,  H-I, G-H, F-G,   E-F,  D-E,  C-D,  B-C,  A-B, J-A
-velocityXYZ = [5 5 5 5 5 5 3 3 5 5];    % custom velocities
-% velocityXYZ = [2000 1300 2200 2200 950 1100 950 800 2200 2200];    % custom velocities
+%velocityXYZ = [5 5 5 5 5 5 3 3 5 5];    % custom velocities
+% velocityXYZ = [2600 2000 2000 2600 2600 2350 2350 3000 2350 2350];    % custom velocities
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
 componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX for display in command line only
 alignOption = 'right'; % 'left'; 'right'; 'none' ('none' means XX YY XY are separated by componentOffset)
 widthToAlign = 100; % how long of a segment (num of points) on the left (right) is used to aligning
-ampArray = [0.5 2 1 1 1 1 3 1 1 0.5];
+% ampArray = [0.5 2 1 1 1 1 1 1 1 0.5]; For 7118
+ampArray = [.5 .8 .5 1 1 1 1 .8 .5 1]; % for PMMA 7039
 autoAmp = 0; % automatically calculates amplification instead of using ampArray
 plotOpt = '.'; % for plotting in dots
-% plotOpt = '-'; % for plotting in lines
+plotOpt = '-'; % for plotting in lines
 smoothSpan = 10;
 
 if ~exist('XYZPicks','var')
