@@ -9,17 +9,17 @@ chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
 freq = 1e6;    % freqeuncy in Hz
 downsampleRate = 1;    % remember to also change parameters in Sync cards properly
-cardToGetEncoder = 1;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
+cardToGetEncoder = 0;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 velocityInterval = 1e6;    % interval to use in calculating velocity from encoder
 encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
 % baseLevelFactors = [20.58,11]; % for PMMA sample
-% baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+% baseLevelOffsets = [3.464,2.036]; % for PMMA sample 
 baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58; 
-   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample
+   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample gage voltage amplification
 baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 ;
-    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample
+    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample, voltage shift for gages
 
 % baseLevelFactors = [21.06,11]; % for SWG sample
 % baseLevelOffsets = [3.623,2.048]; % for SWG sample
@@ -38,7 +38,7 @@ baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 
 % defaultBaseVoltages = ones(2,15);
 
 defaultBaseVoltages = [112.6 123 119 124.2 148.8 129 137.3 134.2 146.3 142.6 162.8 183.1 169.3 171.1 192.1;
-    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV
+    147.1 165.7 148.2 177.4 185.4 183.6 149.7 169 149.8 175.4 179.2 177.6 162.7 188.7 169];    % PMMMA data in mV no load voltage
 % defaultBaseVoltages = [111.1 121.8 120.1 123.8 123.5 125.3 139.2 142.6 147.6 150.8 158.8 160.9 162.8 168.9 174.3;
 %     154.2 198.1 151.9 143.9 143 143.6 154 146.2 147.8 147.1 152.4 146.5 140.4 140.5 158.7];    % SWG data in mV
 % defaultBaseVoltages = [116.4	127.2	125.7	129.0	127.6	129.1	139.7	148.1	153.1	156.0	117.2	166.7	168.6	174.4	182.1;
@@ -100,16 +100,17 @@ end
 %% Sync cards
 % parameters regarding synchronization; no need to change unless sync is
 % failed; if failed, observe the encoder pattern: if the encoder is sparse
-% then increase encoderSpacingThrsh and decrease otherwise, and if there is
+% then increase encoderShpacingThrsh and decrease otherwise, and if there is
 % a warning saying matrix exceeds dimension then decrease
 % encoderXcorrWindow.
 encoderShift = 0.5;    % encoder is usually 0/4.6 volts, so pick in between
-encoderSpacingThrsh = 2e5; % for high frequency run
-encoderXcorrWindow = 1e6; % for high frequency run
+encoderSpacingThrsh = 1e5; % for high frequency run
+encoderXcorrWindow = 1e5; % for high frequency run
 % encoderSpacingThrsh = 3.5e4; % encoderXcorrWindow = 7.05e5; % for run 7118
 % encoderSpacingThrsh = 1e3; % for diluted runs in which the frequency is reduced
 % encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
-
+useFullTrace = 1;
+   
 % execution begins here
 if ~isempty(filename)
     % calc timeshift of cards
@@ -137,7 +138,11 @@ if ~isempty(filename)
                 end
             end
             encoderjumps(ii) = encoderjump;
-            trace{ii} = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
+            if useFullTrace
+                trace{ii} = data1(:,encoderCh1);
+            else
+                trace{ii} = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
+            end
         end
         
         for i=2:length(test)
@@ -152,7 +157,10 @@ if ~isempty(filename)
     
     for i=2:length(test)
         timecell{i} = ...
-            timecell{1}-(encoderjumpavg(i-1)+encoderjumps(i)-encoderjumps(1))/freq; % apply time shift
+            timecell{1}-(...
+            encoderjumpavg(i-1)+...
+            (encoderjumps(i)-encoderjumps(1))*(1-useFullTrace)...
+            )/freq; % apply time shift
     end
     
 end
@@ -164,12 +172,12 @@ end
 
 % parameters to change before executing the following code
 cardToShow = [1,2];    % cards to display%
-% chSN = [16,17;16,17];
+chSN = [16,17,1;16,17,1]; % encoder data
 % chSN = [6,5,4,3,2,1];
 % chSN = [1:15;1:15];    % for velocity field picking
 % chSN = [1:16:3;1:16:3];
 % chSN = [3,6,9;3,6,9];
-chSN = [16,13,10,7,4,1;16,13,10,7,4,1]; % first gage (shear)
+% chSN = [16,17,13,10,7,4,1;16,17,13,10,7,4,1]; % first gage (shear)
 % chSN = [13,10,7,4,1,16;13,10,7,4,1,16]; % third gage (shear)
 % chSN = [16;16];    % channels to display on each card
 % chSN = [16,14,11,8,5,2;16,14,11,8,5,2];    % normal load channels to display on each card
@@ -440,7 +448,7 @@ msgbox(['Done. Peak is at ~',num2str(mean(averageArrivalTimes)),...
 GF = 155;
 useSimpleXYZConversion = 0;    % make 0 to use accurate XYZ calculation
 exportOrPlot = 'plot'; % enter 'export' for saving data
-smoothSpan = 2;    % used for BOTH 'plot' and 'export'
+smoothSpan = 1;    % used for BOTH 'plot' and 'export'
 detrendLines123 = 1; % setting for clear plotting
 detrendLinesXYZ = 1; % setting for clear plotting
 % detrendLines123 = 0; % setting for true values relative to zero for export
@@ -453,7 +461,7 @@ cardOffset = 9e-2;
 chOffset = 7e-3;
 % chOffset = 0;
 % cardOffset = 0;
-chAmp = 500;
+chAmp = 300;
 color = {'r','k','b'};
 XYZPicksReady = 0;
 componentToUse = 1; % 1:XY, 2:YY, 3:XX; this is the component to use to do time/distance shift
@@ -686,17 +694,20 @@ customXYZshifts = [0 0 0 0 0 0 0 0 0 0];    % custom time shift
 velocityXYZ = ones(1,10);    % custom velocity
 % velocityXYZ   I-J,  H-I, G-H, F-G,   E-F,  D-E,  C-D,  B-C,  A-B, J-A
 %velocityXYZ = [5 5 5 5 5 5 3 3 5 5];    % custom velocities
-% velocityXYZ = [2600 2000 2000 2600 2600 2350 2350 3000 2350 2350];    % custom velocities
+% velocityXYZ = [700 700 2545 2040 1000 907 1928 2591 700 2253];    % custom velocities for secondary event PMMA 7039
+% velocityXYZ = [1316 1200 3045 2040 1000 907 1928 2591 1110 2253];
+% velocityXYZ = [2193 3013 2342 3626 1000 1928 1814 3455 2221 1900]; % velocities for 7039 first event w/XF
+
 componentOffset = 2e-4;    % offset between groups of lines in XY, YY, and XX
 componentToDisplay = 1;  % 1:XY, 2:YY, 3:XX for display in command line only
 alignOption = 'right'; % 'left'; 'right'; 'none' ('none' means XX YY XY are separated by componentOffset)
 widthToAlign = 100; % how long of a segment (num of points) on the left (right) is used to aligning
-% ampArray = [0.5 2 1 1 1 1 1 1 1 0.5]; For 7118
-ampArray = [.5 .8 .5 1 1 1 1 .8 .5 1]; % for PMMA 7039
-autoAmp = 0; % automatically calculates amplification instead of using ampArray
+% ampArray = [0.5 2 1 1 1 1 1 1 1 0.5]; % For 7118
+autoAmp = 0; % set to 1 to automatically calculates amplification instead of using ampArray
+ampArray = [1 1.3 1 1 1 1 .7 .7 1 .7]; % for PMMA 7039
 plotOpt = '.'; % for plotting in dots
 plotOpt = '-'; % for plotting in lines
-smoothSpan = 10;
+smoothSpan = 1;
 
 if ~exist('XYZPicks','var')
     XYZPicks = zeros(2,15);
