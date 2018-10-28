@@ -2,21 +2,26 @@
 % Jeffers, display the data according to the user request
 %% Initializing
 % paramters to change before continuing
+useLowFrequencyData = 1;
+lowFreqDataChannelNames = {'Time','Axial Load','Torque','Eddy2','Encode Volt'};
+lowFreqDataChannelFactors = [1e-3, 1, 1, 1, 1];
+lowFreqEncoderChannel = 5;
+
 cardSN = [1,2];    % which cards to import
 chNames = {'J3','J2','J1','I3','I2','I1','H3','H2','H1',...
     'G3','G2','G1','F3','F2','F1','Encoder','Unused';...
     'E3','E2','E1','D3','D2','D1','C3','C2','C1',...
-    'B3','B2','B1','A3','A2','A1','Accel','Encoder'};
+    'B3','B2','B1','A3','A2','A1','Encoder','Accel'};
 freq = 1e6;    % freqeuncy in Hz
 downsampleRate = 1;    % remember to also change parameters in Sync cards properly
 cardToGetEncoder = 0;    % the number of card whose encoder data is used for velocity and counter calculation; put 0 if you don't want velocity and counter
 velocityInterval = 1e6;    % interval to use in calculating velocity from encoder
-encoderChannels = [16;17];    % encoder channels for the two cards; should match the ordering in cardSN
+encoderChannels = [16;16];    % encoder channels for the two cards; should match the ordering in cardSN
 encoderAvailable = 1;    % 1 for yes, 0 for no; if no encoder is available, there is no sync between cards
 lenPerSector = 1.5e-6;    % encoder sector length in meters
 % baseLevelFactors = [20.58,11]; % for PMMA sample
-% baseLevelOffsets = [3.464,2.036]; % for PMMA sample 
-% baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58; 
+% baseLevelOffsets = [3.464,2.036]; % for PMMA sample
+% baseLevelFactors = [20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58 20.58;
 %   11 11 11 11 11 11 11 11 11 11 11 11 11 11 11]; % for PMMA sample gage voltage amplification
 % baseLevelOffsets = [3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 3.464 ;
 %    2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036 2.036]; % for PMMA sample, voltage shift for gages
@@ -70,6 +75,19 @@ for i = 1:length(cardSN)
         temppath = [filepath{i},'*.txt'];
     end
 end
+
+% load low frequency file
+if useLowFrequencyData
+    [filenameLowFreq, filepathLowFreq] = uigetfile...
+        ('*.*', 'Please select Low Frequency File');
+    if filenameLowFreq ~= 0
+        lowFreqRawData = dlmread([filepathLowFreq, filenameLowFreq],',',1,0);
+    end
+    lowFreq = 1e3/lowFreqRawData(2,1); % get frequency from time(ms)
+    lowFreqData = lowFreqRawData.*lowFreqDataChannelFactors;
+    lowFreqData(end,1) = lowFreqData(end-1,1) + 1/lowFreq;
+end
+
 test = cell(1,length(cardSN));
 raw_test = test;
 for i = 1:length(cardSN)
@@ -110,7 +128,7 @@ encoderXcorrWindow = 1e5; % for high frequency run
 % encoderSpacingThrsh = 1e3; % for diluted runs in which the frequency is reduced
 % encoderXcorrWindow = 1e5; % for diluted runs in which the frequency is reduced
 useFullTrace = 1;
-   
+
 % execution begins here
 if ~isempty(filename)
     % calc timeshift of cards
@@ -119,12 +137,16 @@ if ~isempty(filename)
     encoderjumps = zeros(1,length(test));
     if encoderAvailable == 1
         for ii = 1:length(test)
+            data1 = test{ii};
+            encoderCh1 = encoderChannels(ii);
+            if useFullTrace
+                trace{ii} = data1(:,encoderCh1);
+                continue
+            end
             encodercurrent = 1;
             encoderbefore = 0;
             encoderjump = 1;
             spacing = 0;
-            data1 = test{ii};
-            encoderCh1 = encoderChannels(ii);
             for j = 2:length(data1)
                 if (data1(j-1,encoderCh1) - encoderShift)*...
                         (data1(j,encoderCh1) - encoderShift) < 0
@@ -138,11 +160,7 @@ if ~isempty(filename)
                 end
             end
             encoderjumps(ii) = encoderjump;
-            if useFullTrace
-                trace{ii} = data1(:,encoderCh1);
-            else
-                trace{ii} = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
-            end
+            trace{ii} = data1(encoderjump:encoderjump + encoderXcorrWindow,encoderCh1);
         end
         
         for i=2:length(test)
@@ -165,6 +183,16 @@ if ~isempty(filename)
     
 end
 
+%% Sync with Low Frequency Data
+if useLowFrequencyData
+    dilutedEncoderHighFreq = downsample(trace{1}, freq/lowFreq);
+    minLength = min(length(dilutedEncoderHighFreq), length(lowFreqData));
+    [r,lag] = xcorr(dilutedEncoderHighFreq(1:minLength), lowFreqData(1:minLength,lowFreqEncoderChannel));
+    [~,I] = max(abs(r));
+    offsetWithLowFreq = round(-lag(I));
+    timeLowFreq = lowFreqData(:,1) - offsetWithLowFreq/lowFreq;
+end
+
 %% Plotting
 % can display data median-filtered, smoothened and demeaned, as well as
 % scaled. After the above sections are run, just simply run the section to
@@ -184,6 +212,7 @@ chSN = [16,17,13,10,7,4,1;16,17,13,10,7,4,1]; % first gage (shear)
 % chSN = [8,5,2;8,5,2];
 % chSN = [2,5,8,11,14;2,5,8,11,14];    % channels to display on each card
 % chSN = [1,3,4,6,7,9,10,12,13,15;1,3,4,6,7,9,10,12,13,15];    % channels to display on each card
+lowFreqChannels = [2,3,4,5];
 smoothSpan = [50,50];    % smoothening window; make it 1 to diable smoothening; note there is no smoothening for AE data
 medFilterOn = [1,1];    % choosing 1 makes median filter on; median filter gets rid of spikes
 cardOffset = 0.0;    % offset between cards when plotting
@@ -261,7 +290,14 @@ for j = 1:length(cardToShow)
     end
 end
 
-strings = cell(length(cardToShow)*length(chSN) + encoderVelDis,1);
+if useLowFrequencyData
+    for i = 1:length(lowFreqChannels)
+        plot(timeLowFreq, lowFreqData(:,lowFreqChannels(i)));
+    end
+end
+
+strings = cell(length(cardToShow)*length(chSN)...
+    + length(lowFreqChannels)*useLowFrequencyData + encoderVelDis,1);
 
 for j = 1:length(cardToShow)
     tempInd = find(cardSN == cardToShow(j),1);
@@ -269,6 +305,12 @@ for j = 1:length(cardToShow)
         strings{(j - 1)*length(chSN) + i} ...
             = sprintf([num2str(cardToShow(j)),' Ch ',num2str(chSN(j,i)),...
             ' ',chNames{tempInd,chSN(j,i)}]);
+    end
+end
+
+if useLowFrequencyData
+    for i = 1:length(lowFreqChannels)
+        strings{length(cardToShow)*length(chSN) + i} = sprintf(['Low ',lowFreqDataChannelNames{lowFreqChannels(i)}]);
     end
 end
 
@@ -287,7 +329,7 @@ legend (strings);
 xlabel ('Time in seconds');
 if encoderVelDis == 2
     ylabel (['Velocity * ',num2str(1/vSlope,'%.1e'),...
-        ' m/s',sprintf('\n'),'Distance * ',num2str(1/sSlope,'%.1e'),' m']);
+        ' m/s',newline,'Distance * ',num2str(1/sSlope,'%.1e'),' m']);
 end
 
 hold off;
@@ -735,7 +777,7 @@ try
 catch ME
     error('Please repick.');
 end
-if exist('figPicked','var') && isvalid(figPicked) 
+if exist('figPicked','var') && isvalid(figPicked)
     figure(figPicked);
 else
     figPicked = figure('Name',['strain_picked_',name]);
@@ -761,7 +803,7 @@ for i = 1:2
             elseif isequal(alignOption, 'right')
                 alignOffsets(ceil(((i-1)*15+j)/3)) = mean(strainDatas{i}(1:widthToAlign,j));
             elseif isequal(alignOption, 'none')
-                 alignOffsets(ceil(((i-1)*15+j)/3)) = -mod(j-1,3)*componentOffset;
+                alignOffsets(ceil(((i-1)*15+j)/3)) = -mod(j-1,3)*componentOffset;
             end
             plot(0-(timecell{i}(leftInd:rightInd)-XYZPicks(i,j)...
                 -customXYZshifts(ceil(((i-1)*15+j)/3)))...
